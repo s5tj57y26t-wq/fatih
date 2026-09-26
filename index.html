@@ -17,10 +17,39 @@
   <div id="app"></div>
   <div id="modal" class="modal hidden"></div>
   <div id="toast" class="toast hidden"></div>
-  <script src="js/data.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/core/core.js"></script>
+  <script src="js/core/save.js"></script>
+  <script src="js/db/nations.js"></script>
+  <script src="js/db/names.js"></script>
+  <script src="js/db/leagues.js"></script>
+  <script src="js/db/clubs.js"></script>
+  <script src="js/db/extra.js"></script>
+  <script src="js/db/players/eng.js"></script>
+  <script src="js/db/players/esp.js"></script>
+  <script src="js/db/players/extra.js"></script>
+  <script src="js/db/players/fra.js"></script>
+  <script src="js/db/players/ger.js"></script>
+  <script src="js/db/players/ita.js"></script>
+  <script src="js/db/players/ksa.js"></script>
+  <script src="js/db/players/ned.js"></script>
+  <script src="js/db/players/other.js"></script>
+  <script src="js/db/players/por.js"></script>
+  <script src="js/db/players/tur.js"></script>
+  <script src="js/model/player.js"></script>
+  <script src="js/model/engine.js"></script>
+  <script src="js/model/comp.js"></script>
+  <script src="js/model/calendar.js"></script>
+  <script src="js/model/sim.js"></script>
+  <script src="js/model/world.js"></script>
+  <script src="js/model/game.js"></script>
+  <script src="js/model/uefa.js"></script>
+  <script src="js/model/intl.js"></script>
+  <script src="js/model/market.js"></script>
+  <script src="js/ui/base.js"></script>
+  <script src="js/ui/world.js"></script>
+  <script src="js/ui/office.js"></script>
+  <script src="js/ui/match.js"></script>
+  <script src="js/ui/app.js"></script>
   <script>
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js').catch(function () {});

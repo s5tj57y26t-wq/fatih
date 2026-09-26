@@ -337,7 +337,6 @@
   // Kullanıcı "Devam"a bastığında: bir sonraki kullanıcı maçına ya da haftanın başına kadar ilerle
   function advance() {
     const s = S();
-    if (s.user.sacked && !s.user.club) return { type: 'jobless' };
     const start = s.day;
     for (let guard = 0; guard < 60; guard++) {
       const f = userFixtureOn(s.day);
@@ -346,7 +345,13 @@
       processDay(s.day);
       const urgent = s.news.find(n => n.id > before && n.urgent);
       if (urgent) return { type: 'news', n: urgent };
-      if (U.ymd(s.day).w === 1 && s.day - start >= 1) return { type: 'week' };
+      if (U.ymd(s.day).w === 1 && s.day - start >= 1) break;
+    }
+    const u = s.user;
+    if (u.club == null && !(u.offers || []).length && U.rand() < 0.4) {
+      const last = u.history.length ? s.clubs[Object.keys(s.clubs).find(id => s.clubs[id].n === u.history[u.history.length - 1].club)] : null;
+      CM.Market.jobOffers(last ? last.rep - 6 : 55);
+      return { type: 'jobless' };
     }
     return { type: 'week' };
   }

@@ -2,20 +2,42 @@
 
 Championship Manager 01/02 tarzında, telefonda oynanmak üzere tasarlanmış metin tabanlı bir futbol menajerlik oyunu.
 Kurulum ya da derleme gerektirmez; saf HTML/CSS/JavaScript ile yazılmıştır ve internet olmadan da çalışır (PWA).
+Oyun **2026/27 sezonunun başında (1 Temmuz 2026)** başlar.
 
-## Özellikler
+## Dünya
 
-- **18 kurgusal kulüp**, her birinde ~24 oyuncu; oyuncuların CM tarzı 1-20 arası özellikleri (bitiricilik, pas, top kapma, hız, kalecilik...)
-- **Canlı maç motoru**: dakika dakika Türkçe anlatım, 3 hız seçeneği, devre arası, maç içi taktik ve oyuncu değişikliği,
-  istatistikler, oyuncu notları ve diğer maçların anlık skorları
-- **Taktik**: 6 diziliş (4-4-2, 4-3-3, 4-5-1, 3-5-2, 5-3-2, 4-2-4), mentalite, pas stili ve pres ayarları; saha üzerinde ilk 11 ve 7 yedek seçimi
-- **Transfer**: oyuncu arama/filtreleme, bonservis teklifi, pazarlık (karşı teklif), maaş talebi ve sözleşme süresi,
-  serbest oyuncular, satış listesi ve diğer kulüplerden gelen teklifler
-- **Kulüp yönetimi**: bütçe, haftalık maaş yükü, bilet/sponsor gelirleri, yönetim kurulu güveni ve sezon beklentisi (kovulabilirsiniz!)
-- **Sezonlar**: 34 haftalık çift devreli lig, puan durumu, fikstür, gol krallığı, sezon sonu ödülleri,
-  yaşlanma/gelişim, emeklilik, sözleşme bitişleri ve altyapıdan gelen genç oyuncular
-- Sakatlıklar, kart cezaları (kırmızı kart ve 4 sarı), kondisyon ve moral
-- Her hafta otomatik kayıt (tarayıcı hafızası)
+- **20 ülkenin oynanabilir ligi** (+ 6 ikinci lig): İngiltere, İspanya, Almanya, İtalya, Fransa, Türkiye (2. ligleriyle birlikte),
+  Portekiz, Hollanda, Belçika, İskoçya, Avusturya, İsviçre, Yunanistan, Çekya, Danimarka, Polonya, Hırvatistan, Sırbistan,
+  Ukrayna ve Suudi Arabistan. Ligler güncel adları (Trendyol Süper Lig, LALIGA EA SPORTS, Serie A Enilive...), 2026/27
+  takım listeleri, takım sayıları, devre sayıları, lig bölünmeleri (Avusturya, İskoçya, İsviçre, Danimarka, Yunanistan,
+  Çekya, Sırbistan, Hırvatistan'ın 4 devresi...), düşme/terfi, play-off ve baraj kurallarıyla modellenmiştir.
+- **Yerel kupalar**: Ziraat Türkiye Kupası, FA Cup, Carabao Cup, Copa del Rey, DFB-Pokal, Coppa Italia vb. ve süper kupalar
+  (Turkcell Süper Kupa 4 takımlı).
+- **UEFA**: Şampiyonlar Ligi, Avrupa Ligi, Konferans Ligi — 36 takımlı lig aşaması (İsviçre sistemi, torbalı kura, aynı ülke
+  eşleşmesi yok), play-off turu, son 16'dan finale sabit eşleşme ağacı; UEFA Süper Kupa; ülke ve kulüp katsayıları,
+  katsayıya göre katılım listesi ve ödül paraları. 2026/27 lig aşaması katılımcıları gerçektir; sonraki sezonların katılımcıları
+  oyun içindeki lig ve kupa sonuçlarından belirlenir.
+- **Diğer kulüp turnuvaları**: FIFA Kıtalararası Kupa, AFC Şampiyonlar Ligi Elite (Batı/Doğu bölgeleri), 2029 FIFA Kulüpler Dünya Kupası.
+- **Milli takımlar** (~130 ülke): UEFA Uluslar Ligi (2026/27 gerçek A ligi grupları), EURO 2028 (İngiltere/İskoçya/Galler/İrlanda)
+  elemeleri ve finalleri, 2030 Dünya Kupası elemeleri ve finalleri (48 takım), Afrika Uluslar Kupası, Asya Kupası, Gold Cup, Copa América.
+  Elo tabanlı dünya sıralaması; milli takım oyuncuları maç öncesi kulüplerinden ayrılır.
+- **Gerçek oyuncular**: 190'dan fazla kulübün ~2.200 gerçek oyuncusu (2026 yaz transferleri dahil); mevki, yaş, uyruk ve oyun
+  tarzına göre CM tarzı 1-20 arası 17 özellik. Veritabanı dışındaki kadro boşlukları kurgusal oyuncularla doldurulur (kadroda "·" işaretli).
+
+## Oynanış
+
+- **Kariyer**: istediğiniz ligden bir kulüp, isteğe bağlı olarak bir milli takım ile birlikte. Yönetim kurulu hedefleri, güven,
+  görevden alınma ve iş teklifleri.
+- **Canlı maç**: dakika dakika Türkçe anlatım, 3 hız, devre arası, maç içi taktik; 5 değişiklik hakkı (3 pencerede, uzatmada +1),
+  uzatmalar ve seri penaltılar, çift maçlı eşleşmelerde toplam skor. "Hızlı sonuç" seçeneği.
+- **Taktik**: 11 diziliş, mentalite, pas stili, pres, tempo, penaltıcı; mevki dışı oyuncular daha düşük verim verir.
+- **Transfer**: tüm dünyada oyuncu arama (lig, uyruk, yaş, değer filtreleri), bonservis pazarlığı, karşı teklif, maaş ve sözleşme süresi,
+  yabancı oyuncu kotaları, serbest oyuncular, transfer dönemleri (yaz ve ocak), satış listesi, gelen teklifler.
+- **Gözlem**: tanımadığınız oyuncuların özellikleri aralık olarak görünür; tek oyuncu (1 hafta), lig veya ülke (4 hafta) gözlemi.
+- **Antrenman**: takım odağı (genel, fiziksel, hücum, savunma, taktik, duran top) ve yoğunluk; bireysel antrenman odağı.
+- **Kulüp**: finans (bilet, TV, sponsor, ödüller, maaşlar), altyapı (her yıl 15 Mart'ta genç oyuncular), sözleşme yenileme/fesih.
+- Sakatlıklar, turnuvaya göre ayrı sarı kart birikimi ve cezalar, kondisyon, moral, oyuncu gelişimi, yaşlanma ve emeklilik.
+- Otomatik kayıt (IndexedDB, sıkıştırılmış).
 
 ## Telefonda oynamak
 
@@ -28,8 +50,6 @@ oyun uygulama gibi tam ekran açılır ve çevrimdışı çalışır.
 **Bilgisayarda yerel olarak:**
 
 ```bash
-npx http-server -p 8080
-# ya da
 python3 -m http.server 8080
 ```
 
@@ -37,14 +57,19 @@ Aynı Wi-Fi ağındaki telefondan `http://<bilgisayarın-ip-adresi>:8080` adresi
 
 ## Dosya yapısı
 
-| Dosya | İçerik |
+| Klasör / dosya | İçerik |
 | --- | --- |
-| `index.html` | Uygulama iskeleti |
-| `css/style.css` | Mobil öncelikli, CM 01/02 esintili tema |
-| `js/data.js` | Kulüpler, isimler, özellikler, dizilişler, taktik sabitleri, rastgele sayı üreteci |
-| `js/engine.js` | Oyuncu değerlendirme ve dakika dakika maç motoru |
-| `js/game.js` | Oyun dünyası: fikstür, puan durumu, transfer, finans, sezon geçişi, kayıt |
-| `js/ui.js` | Ekranlar, canlı maç ekranı ve dokunmatik etkileşim |
-| `manifest.json`, `sw.js`, `icons/` | Ana ekrana eklenebilir uygulama (PWA) ve çevrimdışı önbellek |
+| `js/core/` | Yardımcılar (rastgelelik, tarih, para), kayıt/yükleme |
+| `js/db/` | Ülkeler, ligler ve kurallar, kulüpler, isim havuzları, `players/` altında gerçek oyuncu listeleri |
+| `js/model/` | Oyuncu modeli, maç motoru, turnuva motoru, takvim, dünya kurulumu, oyun döngüsü, UEFA, milli takımlar, transfer/finans |
+| `js/ui/` | Arayüz ekranları, canlı maç, olay yönetimi |
+| `tools/normalize-players.js` | Oyuncu dosyalarını düzenleyen yardımcı betik (Node.js) |
 
-Tüm kulüp ve oyuncu isimleri kurgusaldır.
+Oyuncu satırı biçimi: `Ad Soyad;MEVKİ[/YAN MEVKİ];doğum yılı;UYRUK;güç[;potansiyel][;özellik etiketleri]`.
+
+## Notlar
+
+- Oyuncu güç değerleri, gerçek oyuncuların bilinen seviyesine göre oyunun kendi tahminidir; resmi bir veritabanı değildir.
+- Henüz resmi olarak kesinleşmemiş biçimler (ör. 2030 Dünya Kupası UEFA elemeleri, bazı kıta turnuvalarının tarihleri) gerçeğe
+  en yakın şekilde yaklaşık olarak modellenmiştir. Takvim yılına göre oynanan ligler (Norveç, İsveç vb.) oynanabilir değildir;
+  bu ülkelerin kulüpleri Avrupa kupalarında yer alır.

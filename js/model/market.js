@@ -67,7 +67,7 @@
     const share = first ? 0.75 : U.clamp(0.3 + (u.conf || 50) / 250, 0.3, 0.65);
     c.tb = U.roundMoney(Math.max(0, c.money * share));
   }
-  function budget(c) { return Math.max(0, Math.min(c.tb || 0, c.money)); }
+  function budget(c) { if (c.tb == null) setBudget(c, true); return Math.max(0, Math.min(c.tb, c.money)); }
   function boardNewSeason() {
     const u = S().user; if (!u || !u.club) return;
     setExpectation();

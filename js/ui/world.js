@@ -74,7 +74,7 @@
   }
   UI.VIEWS.world = function () {
     const s = S(), u = s.user;
-    const tabs = [['mine', 'Benim'], ['cty', 'Ülkeler'], ['uefa', 'UEFA'], ['intl', 'Dünya'], ['nat', 'Milli'], ['rank', 'Sıralamalar']];
+    const tabs = [['mine', 'Benim'], ['cty', 'Ülkeler'], ['uefa', 'UEFA'], ['intl', 'Dünya'], ['nat', 'Milli'], ['rank', 'Sıralamalar'], ['arch', 'Ödüller']];
     const tab = ui.worldTab;
     let body = '';
     if (tab === 'mine') {
@@ -92,6 +92,7 @@
     } else if (tab === 'nat') {
       body = `<div class="panel"><h3>Milli takım turnuvaları</h3><ul class="list">${compsOf(c => c.nat).map(compLi).join('') || '<li class="muted">Yok</li>'}</ul></div>`;
     } else if (tab === 'rank') body = rankingsHtml();
+    else if (tab === 'arch') body = UI.archHtml();
     return `<div class="tabs">${tabs.map(t => `<button data-a="wTab" data-v="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>${body}`;
   };
 

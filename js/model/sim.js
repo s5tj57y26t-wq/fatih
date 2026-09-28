@@ -163,6 +163,7 @@
         if (ps && (ps.mins > 0 || ps.started)) {
           const st = p.st[f.c] || (p.st[f.c] = [0, 0, 0, 0, 0]);
           st[0]++; st[1] += ps.g; st[2] += ps.a; if (ps.rating) { st[3] += ps.rating; st[4]++; }
+          CM.X && CM.X.onPlayer(p, ps, nt ? null : C.tObj(s.id));
           if (nt) { p.ntCaps++; p.ntGoals += ps.g; }
           p.cond = Math.round(ps.cond != null ? ps.cond : p.cond);
           p.mor = U.clamp(p.mor + res * 4 + (ps.rating >= 7.5 ? 3 : ps.rating && ps.rating < 6 ? -2 : 0), 5, 100);
@@ -188,6 +189,7 @@
       }
     });
     // Kullanıcı oyuncularına ait bildirimler
+    CM.X && CM.X.onMatch(f, m);
     CM.Game && CM.Game.afterMatch && CM.Game.afterMatch(f, m);
     if (c.intl && !c.nat) CM.UEFA.onPlayed(c, f);
     if (c.nat) CM.Intl.onPlayed(c, f);

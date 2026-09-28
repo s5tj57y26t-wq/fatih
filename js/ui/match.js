@@ -1,7 +1,7 @@
 /* Arayüz: "Devam" akışı, maç öncesi, canlı maç (anlatım, istatistik, değişiklik, taktik), maç sonu */
 (function (G) {
   'use strict';
-  const CM = G.CM, U = CM.U, P = CM.P, C = CM.Comp, E = CM.E, UI = CM.UI, A = UI.A, ui = UI.ui, h = UI.h, esc = U.esc;
+  const CM = G.CM, U = CM.U, P = CM.P, C = CM.Comp, E = CM.E, X = CM.X, UI = CM.UI, A = UI.A, ui = UI.ui, h = UI.h, esc = U.esc;
   const S = () => CM.S;
   const $app = document.getElementById('app');
   // Anlatım hızı: ev = bir anlatım satırının ekranda kalma süresi, idle = olaysız dakika (ms)
@@ -34,6 +34,7 @@
       }
       else if (r.type === 'jobless') { ui.view = 'inbox'; UI.render(); h.toast('Yeni iş teklifleri geldi!'); }
       else { UI.render(); if (s.user.club == null) h.toast('Görevsizsiniz: Haberler ekranından teklifleri değerlendirin.'); }
+      if (r.type !== 'match' && document.getElementById('modal').classList.contains('hidden') && UI.checkSummary) UI.checkSummary();
       CM.Save.save().catch(() => {});
     }, 20);
   };
@@ -60,11 +61,13 @@
       </div>
       ${form && form.length ? `<div class="center small">Rakibin son maçları: <span class="form">${form.map(x => `<i class="${x}">${x}</i>`).join('')}</span></div>` : ''}
       ${missing.length ? `<div class="panel mt"><div class="body small warn">İlk 11'inizde oynayamayacak oyuncular var: ${missing.map(p => esc(p.n)).join(', ')}. Maç başlarken yerleri otomatik doldurulur.</div></div>` : ''}
-      <div class="small muted center mt">${tac.form} · ${E.MENT[tac.ment].n} · ${esc(oo.n)}</div>
+      ${UI.preExtras ? UI.preExtras(f) : ''}
+      <div class="small muted center mt">Sizin taktiğiniz: ${tac.form} · ${E.MENT[tac.ment].n}</div>
       <div class="btns mt"><button class="btn" data-a="preTac" data-t="${nat ? 'nat' : 'club'}">📋 Taktik</button><button class="btn" data-a="quickMatch">⏩ Hızlı sonuç</button></div>
-      <button class="btn primary block mt" data-a="startMatch">▶ Maçı izle</button>`);
+      <button class="btn primary block mt" data-a="startMatch">▶ Maçı izle</button>`, ui.pre === f);
     ui.pre = f;
   }
+  UI.preMatch = preMatch;
 
   // ---------- Canlı maç ----------
   // Her anlatım satırı okunabilecek kadar ekranda kalır; olaysız dakikalar hızlı geçer
@@ -94,7 +97,7 @@
     if (e.type === 'goal' || e.type === 'pgoal') { L.head = e.text; L.headCls = 'goal'; }
     else if (e.type === 'red') { L.head = e.text; L.headCls = 'card'; }
     else { L.head = e.text; L.headCls = e.type === 'yellow' ? 'card' : e.type === 'build' ? 'build' : ''; }
-    if (e.type === 'half') { L.paused = true; L.head = 'DEVRE ARASI — ' + e.text; L.headCls = ''; }
+    if (e.type === 'half') { L.paused = true; L.head = 'DEVRE ARASI — ' + e.text; L.headCls = ''; L.needTalk = true; }
     if (e.type === 'et') L.paused = true;
     if (e.type === 'end') L.sc = [m.sides[0].st.g, m.sides[1].st.g];
     if (e.side === L.us && (e.type === 'injury' || e.type === 'red') && !m.finished) {
@@ -120,6 +123,37 @@
     L.min = m.minute;
     renderLive();
     schedule(m.phase === 'pens' ? sp.ev : sp.idle);
+  }
+  // Devre arası konuşması penceresi
+  function htTalk() {
+    const L = ui.live, s = L.m.sides[L.us];
+    if (s.talked) return;
+    h.openModal(`<h2>Devre arası</h2><div class="small muted">Soyunma odasında oyunculara ne söyleyeceksiniz? Etkisi skora ve oyuncuların kişiliğine göre değişir.${X.captainLeader() ? ' Lider kaptanınız konuşmanın etkisini artıracak.' : ''}</div>
+      <div class="list-btns mt">${Object.keys(E.TALKS).map(k => `<button class="btn block" data-a="liveTalk" data-k="${k}">${esc(E.TALKS[k].n)}</button>`).join('')}</div>
+      <button class="btn block mt" data-a="liveClose">Konuşma yapma</button>`);
+  }
+  // Mini saha: son olaya göre topun konumu (ev sahibi sağa hücum eder)
+  function ballPos(L) {
+    const e = L.shown[L.shown.length - 1];
+    if (!e || e.side == null || e.side < 0) return [50, 50];
+    const dir = e.side === 0 ? 1 : -1, r = (U.hash(String(L.shown.length) + e.type) % 50) + 25;
+    const X_ = { build: 70, goal: 97, pgoal: 95, pmiss: 93, pen: 88, save: 93, miss: 92, block: 82, corner: 98, offside: 80, foul: 45, yellow: 45, red: 45, injury: 55, sub: 50, shout: 50 };
+    const x = X_[e.type] != null ? X_[e.type] : 50;
+    const y = e.type === 'corner' ? (r > 50 ? 4 : 96) : e.type === 'goal' || e.type === 'pgoal' ? 50 : r;
+    return [50 + dir * (x - 50), y];
+  }
+  // Baskı grafiği: 5 dakikalık dilimlerde iki takımın atak ağırlığı
+  function momentumSvg(L, m) {
+    const W = { build: 1, corner: 1, save: 1.5, miss: 1.2, block: 1, goal: 3, pen: 2 };
+    const n = Math.max(18, Math.ceil((L.min || 1) / 5));
+    const b = new Array(n).fill(0);
+    L.shown.forEach(e => { if (W[e.type] && e.side >= 0 && e.min) b[Math.min(n - 1, Math.floor((e.min - 1) / 5))] += (e.side === 0 ? 1 : -1) * W[e.type]; });
+    const mx = Math.max(3, ...b.map(Math.abs));
+    const [c0, c1] = [m.sides[0].c1, m.sides[1].c1 === m.sides[0].c1 ? '#ff8a80' : m.sides[1].c1];
+    const bw = 300 / n;
+    const bars = b.map((v, i) => { const hh = Math.abs(v) / mx * 34; return `<rect x="${i * bw + 1}" y="${v >= 0 ? 36 - hh : 36}" width="${bw - 2}" height="${hh}" fill="${v >= 0 ? c0 : c1}" stroke="#fff3" stroke-width=".5"/>`; }).join('');
+    const goals = L.shown.filter(e => e.type === 'goal').map(e => `<text x="${Math.min(n - 1, Math.floor((e.min - 1) / 5)) * bw + bw / 2}" y="${e.side === 0 ? 8 : 70}" text-anchor="middle" font-size="8">⚽</text>`).join('');
+    return `<svg viewBox="0 0 300 74" class="mom" preserveAspectRatio="none"><line x1="0" y1="36" x2="300" y2="36" stroke="#ffffff40"/>${n > 9 ? `<line x1="${9 * bw}" y1="0" x2="${9 * bw}" y2="74" stroke="#ffffff30" stroke-dasharray="2 2"/>` : ''}${bars}${goals}</svg>`;
   }
   function scorersLine(side, m, n) {
     return side.scorers.slice(0, n).map(x => `${esc(E.sur(m.all[x.id]))} ${x.min}'${x.pen ? ' (P)' : ''}`).join(', ');
@@ -161,7 +195,7 @@
     const pens = pk.length ? `<div class="center small acc">Penaltılar: ${pk.filter(e => e.side === 0 && e.type === 'pgoal').length} - ${pk.filter(e => e.side === 1 && e.type === 'pgoal').length}</div>` : '';
     let body = '';
     if (L.tab === 'feed') body = `<div class="feed">${L.shown.slice(-120).reverse().map(e => `<div class="${e.type}"><span class="m">${e.min ? e.min + "'" : ''}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`;
-    else if (L.tab === 'stats') body = `<div class="panel"><div class="body">${statsHtml(m)}</div></div>`;
+    else if (L.tab === 'stats') body = `<div class="panel"><h3>Baskı grafiği</h3><div class="body">${momentumSvg(L, m)}<div class="small muted row"><span class="grow">${esc(a.sh || a.n)} ▲</span><span>▼ ${esc(b.sh || b.n)}</span></div></div></div><div class="panel"><div class="body">${statsHtml(m)}</div></div>`;
     else body = lineupHtml(m);
     const my = m.sides[L.us];
     const ctl = over
@@ -179,9 +213,12 @@
         <div class="scr"><div>${scorersLine(a, m, L.sc[0])}</div><div>${scorersLine(b, m, L.sc[1])}</div></div>
       </div>
       <div class="headline ${L.headCls}">${esc(L.head)}</div>
+      <div class="mpitch"><i class="ball" style="left:${ballPos(L)[0]}%;top:${ballPos(L)[1]}%"></i></div>
+      ${over ? '' : `<div class="shouts">${Object.keys(E.SHOUTS).map(k => `<button class="chip ${my.shout && my.shout.k === k && L.m.minute <= my.shout.until ? 'on' : ''}" data-a="liveShout" data-k="${k}" ${L.m.minute < my.shoutCd ? 'disabled' : ''}>${esc(E.SHOUTS[k].n)}</button>`).join('')}</div>`}
       <div class="mtabs">${[['feed', 'Anlatım'], ['stats', 'İstatistik'], ['line', 'Kadrolar / Notlar']].map(t => `<button data-a="liveTab" data-v="${t[0]}" class="${L.tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>
       <div class="mbody">${body}</div>
       <div class="mctl">${ctl}</div></div>`;
+    if (L.needTalk) { L.needTalk = false; htTalk(); }
   }
 
   // Maç içi taktik / değişiklik
@@ -212,6 +249,7 @@
     CM.Game.userMatchDone(f, m);
     ui.live = null;
     const side = m.sides[us];
+    ui.lastMatch = C.isNat(us === 0 ? f.h : f.a) ? null : { f, ids: Object.keys(side.ps).map(Number), done: false };
     const rt = Object.keys(side.ps).map(id => [m.all[id], side.ps[id]]).filter(x => x[1].rating).sort((x, y) => y[1].rating - x[1].rating);
     const others = (s.sched[day] || []).map(([cid, fid]) => s.comps[cid] && s.comps[cid].fx[fid]).filter(x => x && x !== f && x.c === f.c && x.hg !== null).slice(0, 20);
     const my = side.st.g, op = m.sides[1 - us].st.g;
@@ -224,6 +262,7 @@
       <div class="center"><b class="${res === 'Galibiyet!' ? 'good' : res === 'Beraberlik' ? 'warn' : 'bad'}">${res}</b></div>
       <div class="panel mt"><h3>Oyuncu notları</h3><ul class="list">${rt.map(([p, ps]) => `<li class="tap" data-a="player" data-id="${p.id}"><span class="grow ellipsis">${esc(p.n)}${ps.g ? ' ⚽'.repeat(ps.g) : ''}${ps.a ? ' 🅰️'.repeat(ps.a) : ''}</span><span class="small muted">${ps.mins}'</span><b class="${ps.rating >= 7.5 ? 'good' : ps.rating < 6 ? 'bad' : ''}">${ps.rating.toFixed(1)}</b></li>`).join('')}</ul></div>
       ${others.length ? `<div class="panel"><h3>Günün diğer sonuçları</h3><ul class="list fxl">${others.map(x => UI.fxRow(x)).join('')}</ul></div>` : ''}
+      <div data-pp>${UI.postPress ? UI.postPress() : ''}</div>
       <button class="btn primary block" data-a="close">Tamam</button>`);
     CM.Save.save().catch(() => {});
   }
@@ -261,7 +300,14 @@
       L.head = L.m.events[L.m.events.length - 1].text || 'Maç sona erdi'; L.headCls = '';
       renderLive();
     },
-    liveEnd() { const L = ui.live; finishMatch(L.f, L.m); }
+    liveEnd() { const L = ui.live; finishMatch(L.f, L.m); },
+    liveShout(d) { const L = ui.live; if (L.m.doShout(L.us, d.k)) { const e = L.m.events[L.m.events.length - 1]; L.shown.push(e); L.head = e.text; L.headCls = ''; } renderLive(); },
+    liveTalk(d) {
+      const L = ui.live; const r = L.m.teamTalk(L.us, d.k, X.pers, X.captainLeader());
+      h.closeModal();
+      if (r) { const e = L.m.events[L.m.events.length - 1]; L.shown.push(e); L.head = r.txt; L.headCls = r.e > 0.005 ? 'goal' : r.e < -0.005 ? 'card' : ''; }
+      renderLive();
+    }
   });
   UI.renderLive = renderLive;
 })(typeof window !== 'undefined' ? window : globalThis);

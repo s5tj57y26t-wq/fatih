@@ -274,3 +274,24 @@ b.rt { width: 34px; text-align: center; flex: none; font-variant-numeric: tabula
 .lr .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lr .cd { flex: none; width: 7px; height: 7px; border-radius: 50%; }
 .lr b.rt, .lr b { width: 26px; font-size: 12px; text-align: right; flex: none; }
+/* Menajerlik eklemeleri */
+.neg .chips { margin-top: 4px; }
+.tips { margin: 8px 0 0; padding-left: 18px; } .tips li { margin: 3px 0; }
+.list-btns { display: grid; gap: 6px; }
+.list-btns .btn { text-align: left; font-weight: 500; }
+.grade { display: inline-block; min-width: 28px; text-align: center; border-radius: 6px; padding: 2px 6px; font-weight: 900; background: #ffffff18; }
+.grade.big { font-size: 34px; padding: 6px 18px; }
+.grade.gA { background: #0f4a2c; color: var(--good); } .grade.gB { background: #1d3f2a; color: #b7f5c8; }
+.grade.gC { background: #4a4a1a; color: var(--warn); } .grade.gD, .grade.gF { background: #5a1420; color: #ffb3b5; }
+.shouts { display: flex; gap: 6px; overflow-x: auto; padding: 0 10px 8px; scrollbar-width: none; }
+.shouts::-webkit-scrollbar { display: none; }
+.shouts .chip { padding: 5px 10px; font-size: 12px; flex: none; }
+.shouts .chip:disabled { opacity: .35; }
+.mpitch { position: relative; height: 34px; margin: -2px 10px 8px; border-radius: 6px; border: 1px solid #ffffff40;
+  background: linear-gradient(90deg, transparent calc(50% - 1px), #ffffff50 calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+  repeating-linear-gradient(90deg, #1c6b34 0 10%, #1a6230 10% 20%); }
+.mpitch::before, .mpitch::after { content: ""; position: absolute; top: 30%; bottom: 30%; width: 5%; border: 1px solid #ffffff60; }
+.mpitch::before { left: -1px; border-left: 0; } .mpitch::after { right: -1px; border-right: 0; }
+.mpitch .ball { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 6px #fff; transition: left .6s ease, top .6s ease; }
+@media (prefers-reduced-motion: reduce) { .mpitch .ball { transition: none; } }
+svg.mom { width: 100%; height: 74px; display: block; }

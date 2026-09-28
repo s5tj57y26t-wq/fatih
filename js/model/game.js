@@ -123,6 +123,7 @@
     if (u && c.win != null && (c.win === u.club || c.win === 'N:' + u.nat)) {
       news(`🏆 ${c.n} ŞAMPİYONU!`, `Tebrikler! ${C.tName(c.win)} ${c.n} kupasını kazandı! Taraftarlar sokaklarda kutlama yapıyor.`, { type: 'trophy' });
       u.trophies = u.trophies || []; u.trophies.push({ s: c.season, n: c.n });
+      CM.X && CM.X.addRep(c.type === 'league' ? 6 : /^(UCL|EURO|WC)$/.test(c.key) ? 9 : /S$/.test(c.key) ? 1 : 3);
       if (c.win === u.club) u.conf = U.clamp(u.conf + (c.type === 'league' ? 25 : 12), 0, 100);
     } else if (c.win != null && (c.type === 'league' || /UCL|UEL|UECL|WC|EURO/.test(c.key))) {
       news(`${c.n}: ${C.tName(c.win)} şampiyon`, `${C.tName(c.win)}, ${c.season}/${String(c.season + 1).slice(2)} ${c.n} şampiyonu oldu.`, { type: 'world' });
@@ -199,6 +200,7 @@
   // ---------- Sezon devri (1 Temmuz) ----------
   function rollover() {
     const s = S(), Y = s.season;
+    CM.X && CM.X.seasonEnd(Y);
     CM.Market && CM.Market.returnLoans && CM.Market.returnLoans();
     const last = s.last = {};
     const moves = [];
@@ -331,6 +333,7 @@
     CM.Intl && CM.Intl.daily && CM.Intl.daily(d);
     CM.UEFA && CM.UEFA.daily && CM.UEFA.daily(d);
     CM.Market && CM.Market.daily && CM.Market.daily(d);
+    CM.X && CM.X.daily(d);
     s.day = d + 1;
     if (t.m === 6 && t.d === 30) rollover();
   }
@@ -370,6 +373,7 @@
     CM.Intl && CM.Intl.daily && CM.Intl.daily(s.day);
     CM.UEFA && CM.UEFA.daily && CM.UEFA.daily(s.day);
     CM.Market && CM.Market.daily && CM.Market.daily(s.day);
+    CM.X && CM.X.daily(s.day);
     s.day++;
     if (t.m === 6 && t.d === 30) rollover();
   }
@@ -399,6 +403,9 @@
     s.user = { name: o.name || 'Menajer', club: clubId, nat: o.nat || null, conf: 60, confNT: 60, trophies: [], history: [], started: s.day };
     setupSeason(2026, true);
     CM.Market && CM.Market.initUser && CM.Market.initUser();
+    // İspanya'da sözleşmelerde serbest kalma maddesi zorunludur
+    Object.values(s.players).forEach(p => { const c = p.club != null ? s.clubs[p.club] : null; if (c && c.cty === 'ESP' && c.lg) p.clause = CM.U.roundMoney(CM.P.valueOf(p) * (2.5 + CM.U.rand() * 3)); });
+    CM.X && CM.X.urep();
     return s;
   }
 

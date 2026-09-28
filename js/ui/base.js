@@ -216,6 +216,9 @@
       if (open && m.type === 'offer' && !m.answered && s.offers.some(o => o.id === m.offerId)) {
         extra = `<div class="btns mt"><button class="btn primary" data-a="offerOpen" data-id="${m.offerId}">Teklifi yanıtla</button></div>`;
       }
+      if (open && m.type === 'natjob' && u.natOffer === m.nat) {
+        extra = `<div class="btns mt"><button class="btn good" data-a="takeNat" data-v="${m.nat}">Milli takım görevini kabul et</button></div>`;
+      }
       if (open && m.type === 'job' && m.club != null && (u.offers || []).includes(m.club)) {
         extra = `<div class="btns mt"><button class="btn good" data-a="takeJob" data-id="${m.club}">Teklifi kabul et</button></div>`;
       }
@@ -290,12 +293,13 @@
       actions = `<div class="panel mt"><h3>İşlemler</h3><div class="body">
         <button class="btn block" data-a="toggleList" data-id="${p.id}">${p.listed ? 'Satış listesinden çıkar' : 'Satış listesine koy'}</button>
         <button class="btn block mt" data-a="toggleLoan" data-id="${p.id}">${p.loanListed ? 'Kiralık listesinden çıkar' : 'Kiralık listesine koy'}</button>
-        <div class="mt small muted">Sözleşme yenileme talebi: <b class="acc">${U.money(dem)}</b>/hafta</div>
-        <div class="slider-row">${[1, 2, 3, 4, 5].map(y => `<button class="chip" data-a="renew" data-id="${p.id}" data-y="${y}">${y} yıl</button>`).join('')}</div>
+        ${S().pending && S().pending.pid === p.id && S().pending.kind === 'renew' && UI.negPanel ? UI.negPanel(p) : `<div class="mt small muted">Sözleşme yenileme talebi: yaklaşık <b class="acc">${U.money(dem)}</b>/hafta</div>
+        <button class="btn block" data-a="renewStart" data-id="${p.id}">📝 Sözleşme görüşmesi başlat</button>`}
         <label class="field"><span>Bireysel antrenman odağı</span><select class="inp" data-ch="pTrain" data-id="${p.id}">${Object.keys(M.IND_FOCUS).map(k => `<option value="${k}" ${p.tf === k || (!p.tf && !k) ? 'selected' : ''}>${M.IND_FOCUS[k]}</option>`).join('')}</select></label>
         <button class="btn danger block mt" data-a="release" data-id="${p.id}">Sözleşmeyi feshet (tazminat ${U.money(Math.round(p.wage * 52 * Math.max(0, p.ce - s.season) * 0.5))})</button>
       </div></div>`;
     } else if (!p.ntOnly) actions = UI.bidPanel ? UI.bidPanel(p, val) : '';
+    if (own && UI.talkPanel) actions = UI.talkPanel(p) + actions;
     const u = s.user;
     if (u.nat && p.nat === u.nat) {
       const n = s.nats[u.nat];
@@ -306,7 +310,8 @@
     openModal(`<button class="close" data-a="close">✕</button>
       <h2>${esc(p.n)}</h2>
       <div class="muted">${P.POS_LONG[p.pos]}${p.sec && p.sec.length ? ' (' + p.sec.map(x => P.POS_TR[x]).join(', ') + ')' : ''} · ${age(p)} yaş · ${flag(p.nat)} ${esc(nat(p.nat).n)}</div>
-      <div class="muted small">${pc ? esc(pc.n) : p.ntOnly ? 'Ligi modellenmeyen kulüp' : 'Serbest'}${p.loan && s.clubs[p.loan.from] ? ` (${esc(s.clubs[p.loan.from].n)}'dan kiralık)` : ''}${p.gen ? ' · kurgusal oyuncu' : ''}</div>
+      <div class="muted small">${pc ? esc(pc.n) : p.ntOnly ? 'Ligi modellenmeyen kulüp' : 'Serbest'}${p.loan && s.clubs[p.loan.from] ? ` (${esc(s.clubs[p.loan.from].n)}'dan kiralık)` : ''}${p.gen ? ' · kurgusal oyuncu' : ''}${c && c.captain === p.id ? ' · <b class="acc">Kaptan</b>' : ''}</div>
+      <div class="chips mt"><button class="chip ${CM.X.inShort(p.id) ? 'on' : ''}" data-a="shortToggle" data-id="${p.id}">${CM.X.inShort(p.id) ? '★ İzleniyor' : '☆ İzleme listesine ekle'}</button><button class="chip" data-a="compare" data-id="${p.id}">⚖️ Karşılaştır</button></div>
       <div class="row mt"><span class="ovr big ${ovrCls(o.v)}${o.fuzzy ? ' fz' : ''}">${o.t}</span>
         <div><div class="small muted">Potansiyel</div>${potTxt}</div>
         <div class="grow right"><div class="small muted">Değer</div><b class="acc">${lvl >= 1 || own ? U.money(val) : '~' + U.money(U.roundMoney(val * (0.7 + U.seeded('v' + p.id)() * 0.6)))}</b></div></div>
@@ -315,13 +320,14 @@
       <div class="panel"><h3>Bilgiler</h3><div class="body"><div class="kv">
         <span>Durum</span><span>${status}</span>
         <span>Kondisyon</span><span>${Math.round(p.cond)}%</span>
-        <span>Moral</span><span>${moraleTxt(p.mor)}</span>
+        <span>Moral</span><span>${moraleTxt(p.mor)}${p.wantsOut ? ' · <b class="bad">Transfer istiyor</b>' : ''}${p.promise ? ' · <span class="warn">Süre sözü verildi</span>' : ''}</span>
+        <span>Kişilik</span><span>${lvl >= 1 || own ? `<b>${CM.X.PERS[CM.X.pers(p)].n}</b> <span class="small muted">${CM.X.PERS[CM.X.pers(p)].d}</span>` : '?'}</span>
         <span>Maaş</span><span>${lvl >= 1 || own ? U.money(p.wage) + '/hafta' : '?'}</span>
-        <span>Sözleşme</span><span>${p.club == null ? '-' : 'Haziran ' + (p.ce + 1)}</span>
+        <span>Sözleşme</span><span>${p.club == null ? '-' : 'Haziran ' + (p.ce + 1)}${p.clause && (lvl >= 1 || own) ? ` · Serbest kalma bedeli ${U.money(p.clause)}` : ''}${p.gb && own ? ` · Gol primi ${U.money(p.gb)}` : ''}</span>
         <span>Bu sezon</span><span>${st[0]} maç · ${st[1]} gol · ${st[2]} asist · Ort. ${avg}</span>
         <span>Milli</span><span>${p.ntCaps} maç · ${p.ntGoals} gol</span>
         ${p.listed ? '<span>Transfer</span><span class="warn">Satış listesinde</span>' : ''}
-      </div>${hist ? '<div class="mt">' + hist + '</div>' : ''}</div></div>${actions}`, true);
+      </div>${(p.aw || []).length ? `<div class="mt small">${p.aw.slice(-8).reverse().map(x => '🏅 ' + esc(x)).join('<br>')}</div>` : ''}${hist ? '<div class="mt">' + hist + '</div>' : ''}</div></div>${actions}`, true);
   }
   UI.playerSheet = playerSheet;
 

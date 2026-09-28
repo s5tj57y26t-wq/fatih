@@ -31,6 +31,23 @@
     LW: [0.95, 0.4, 0.05], RW: [0.95, 0.4, 0.05], ST: [1.1, 0.25, 0.02]
   };
 
+  // Kenardan bağırma: 12 dakika etkili, 10 dakika bekleme süresi
+  const SHOUTS = {
+    hucum: { n: 'Hücuma kalkın!', att: 1.08, def: 0.95 },
+    savun: { n: 'Geride kalın, skoru koruyun!', att: 0.92, def: 1.08 },
+    konsantre: { n: 'Konsantre olun!', mid: 1.03, def: 1.04 },
+    pres: { n: 'Baskı yapın!', mid: 1.05, def: 1.02, tire: 1.35 },
+    sakin: { n: 'Sakin olun, faul yapmayın!', mid: 1.02, foul: 0.55 },
+    aferin: { n: 'Aferin, böyle devam!', att: 1.02, mid: 1.02, def: 1.02 }
+  };
+  // Devre arası konuşmaları
+  const TALKS = {
+    ovgu: { n: 'Övgü: "Harika oynuyorsunuz"' },
+    sakin: { n: 'Sakin ve odaklı: "Planımıza sadık kalalım"' },
+    kizgin: { n: 'Kızgın: "Bu oyun kabul edilemez!"' },
+    rahat: { n: 'Rahat olun: "Kaybedecek bir şeyimiz yok"' },
+    dahafazla: { n: 'Daha fazlasını istiyorum' }
+  };
   const sur = p => { const s = p.n.split(' '); return s.length > 1 ? s.slice(1).join(' ') : s[0]; };
 
   const TXT = {
@@ -78,7 +95,7 @@
       on.forEach(o => { ps[o.p.id] = this._ps(true, 0); });
       return {
         idx, id: src.id, n: src.n, sh: src.sh, c1: src.c1, c2: src.c2, tactic: Object.assign({}, t), on, bench, ps,
-        subsLeft: 5, windows: 3, lastWinMin: -1,
+        subsLeft: 5, windows: 3, lastWinMin: -1, boost: 1, shout: null, shoutCd: 0, talked: false,
         st: { g: 0, sh: 0, ot: 0, co: 0, fo: 0, yc: 0, rc: 0, poss: 0, xg: 0 }, scorers: []
       };
     }
@@ -98,9 +115,11 @@
         att += r * c[0]; mid += r * c[1]; def += r * c[2];
         if (o.slot === 'GK') gk = (o.p.a.kal * 0.55 + o.p.a.ref * 0.45) * (0.7 + 0.003 * o.cond);
       }
-      const h = s.idx === 0 ? this.homeAdv : 1;
+      const h = (s.idx === 0 ? this.homeAdv : 1) * (s.boost || 1);
       const tb = this.trainBonus[s.idx] || 1;
-      return { att: att * m.att * h * tb, mid: mid * pa.mid * h * tb, def: def * m.def * pr.def * h * tb, gk, ch: pa.ch * te.ch };
+      const sh = s.shout && this.minute <= s.shout.until ? SHOUTS[s.shout.k] : null;
+      const xa = sh && sh.att || 1, xm = sh && sh.mid || 1, xd = sh && sh.def || 1;
+      return { att: att * m.att * h * tb * xa, mid: mid * pa.mid * h * tb * xm, def: def * m.def * pr.def * h * tb * xd, gk, ch: pa.ch * te.ch };
     }
 
     pickW(s, fn) { return U.weighted(s.on, fn); }
@@ -129,7 +148,8 @@
       const S = this.sides.map(s => this.strength(s));
       for (let si = 0; si < 2; si++) {
         const s = this.sides[si];
-        const tire = 0.22 * (PRESS[s.tactic.press] || PRESS.normal).tire * (TEMPO[s.tactic.tempo] || TEMPO.normal).tire;
+        const shx = s.shout && mn <= s.shout.until && SHOUTS[s.shout.k].tire || 1;
+        const tire = 0.22 * (PRESS[s.tactic.press] || PRESS.normal).tire * (TEMPO[s.tactic.tempo] || TEMPO.normal).tire * shx;
         const on = s.on;
         for (let i = 0; i < on.length; i++) { const o = on[i]; o.cond = Math.max(10, o.cond - tire * o.tf); s.ps[o.p.id].mins++; }
       }
@@ -273,7 +293,8 @@
       if (!f) return;
       F.st.fo++;
       this.ev('foul', F.idx, this.t(TXT.foul, { p: sur(f.p) }));
-      const r = U.rand(), ps = F.ps[f.p.id];
+      const fx = F.shout && this.minute <= F.shout.until && SHOUTS[F.shout.k].foul || 1;
+      const r = U.rand() / fx, ps = F.ps[f.p.id];
       if (r < 0.007) { ps.rc = 1; F.st.rc++; this.ev('red', F.idx, this.t(TXT.red, { p: sur(f.p) }), { pid: f.p.id }); this.remove(F, f); }
       else if (r < 0.18) {
         ps.yc++; F.st.yc++;
@@ -303,6 +324,44 @@
         }
         this.reslot(s.on.slice().sort((x, y) => y.p.a.kal - x.p.a.kal)[0], 'GK');
       }
+    }
+
+    // Kenardan bağırma
+    doShout(si, k) {
+      const s = this.sides[si];
+      if (!SHOUTS[k] || this.minute < s.shoutCd || this.finished) return false;
+      s.shout = { k, until: this.minute + 12 }; s.shoutCd = this.minute + 10;
+      this.events.push({ min: this.minute, type: 'shout', side: si, text: `${s.sh}: Teknik direktör kenardan bağırıyor: "${SHOUTS[k].n}"` });
+      return true;
+    }
+    // Devre arası konuşması: skora ve oyuncu kişiliklerine göre etkisi değişir; pers(p) -> kişilik anahtarı
+    teamTalk(si, k, pers, captainLeader) {
+      const s = this.sides[si], o = this.sides[1 - si];
+      if (s.talked) return null;
+      s.talked = true;
+      let diff = s.st.g - o.st.g;
+      if (this.agg) diff += si === 0 ? this.agg[0] - this.agg[1] : this.agg[1] - this.agg[0];
+      const str = this.strength(s), ostr = this.strength(o);
+      const under = (str.att + str.mid + str.def) < (ostr.att + ostr.mid + ostr.def) * 0.95;
+      let e = 0;
+      if (k === 'ovgu') e = diff > 0 ? 0.035 : diff === 0 ? 0.012 : -0.02;
+      else if (k === 'kizgin') e = diff < 0 ? 0.045 : diff === 0 ? 0.01 : -0.03;
+      else if (k === 'sakin') e = 0.015;
+      else if (k === 'rahat') e = under ? 0.03 : diff > 0 ? -0.02 : -0.005;
+      else if (k === 'dahafazla') e = diff >= 0 ? 0.022 : 0.01;
+      // Kişilikler: kaprisli/duygusal oyuncular sert konuşmaya kötü, profesyonel/hırslı olanlar iyi tepki verir
+      const ps = s.on.map(x => pers ? pers(x.p) : 'sakin');
+      const share = t => ps.filter(x => t.includes(x)).length / Math.max(1, ps.length);
+      if (k === 'kizgin') e += share(['hirsli', 'profesyonel', 'lider']) * 0.02 - share(['kaprisli', 'duygusal']) * 0.06;
+      if (k === 'ovgu' || k === 'rahat') e -= share(['hirsli']) * 0.01;
+      if (captainLeader) e *= e > 0 ? 1.3 : 0.7;
+      e = Math.max(-0.05, Math.min(0.06, e));
+      s.boost = 1 + e;
+      s.on.forEach(x => { x.p.mor = Math.max(5, Math.min(100, (x.p.mor || 60) + Math.round(e * 150))); });
+      const txt = e >= 0.03 ? 'Oyuncular çok motive oldu ve soyunma odasından hırsla çıktı.' : e > 0.005 ? 'Oyuncular konuşmanıza olumlu tepki verdi.'
+        : e > -0.005 ? 'Konuşmanız oyuncular üzerinde pek etki yaratmadı.' : 'Oyuncular konuşmanıza tepki gösterdi; moraller bozuk.';
+      this.events.push({ min: this.minute, type: 'info', side: si, text: `Devre arası: ${txt}` });
+      return { e, txt };
     }
 
     // Değişiklik: 5 hak, 3 pencere (aynı dakikadaki değişiklikler tek pencere sayılır)
@@ -390,5 +449,5 @@
     runToEnd() { let g = 0; while (!this.finished && g++ < 400) this.step(); return this; }
   }
 
-  CM.E = { FORMATIONS, MENT, PASS, PRESS, TEMPO, CONTRIB, Match, sur };
+  CM.E = { FORMATIONS, MENT, PASS, PRESS, TEMPO, CONTRIB, SHOUTS, TALKS, Match, sur };
 })(typeof window !== 'undefined' ? window : globalThis);

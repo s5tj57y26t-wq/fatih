@@ -16,6 +16,7 @@
       if (f.free && p.club != null) continue;
       if (f.listed && !p.listed) continue;
       if (f.loanL && !p.loanListed) continue;
+      if (f.short && !CM.X.inShort(p.id)) continue;
       if (f.pos !== 'ALL' && (f.pos === 'GK' ? p.pos !== 'GK' : P.LINE[p.pos] !== f.pos || p.pos === 'GK')) continue;
       if (h.age(p) > f.maxAge) continue;
       const c = p.club != null ? s.clubs[p.club] : null;
@@ -67,6 +68,7 @@
           <button class="chip ${f.free ? 'on' : ''}" data-a="trFlag" data-v="free">Serbest</button>
           <button class="chip ${f.listed ? 'on' : ''}" data-a="trFlag" data-v="listed">💲 Satılık</button>
           <button class="chip ${f.loanL ? 'on' : ''}" data-a="trFlag" data-v="loanL">🔄 Kiralık</button>
+          <button class="chip ${f.short ? 'on' : ''}" data-a="trFlag" data-v="short">★ İzleme listem</button>
           <button class="chip ${f.knownOnly ? 'on' : ''}" data-a="trFlag" data-v="knownOnly">Gözlemlenmiş</button>
         </div></div>
         <ul class="list" id="trList">${trList()}</ul></div>
@@ -84,9 +86,7 @@
       inner = `<div class="good">${esc(r.text)}</div>
         <div class="btns mt"><button class="btn" data-a="bidCancel">Vazgeç</button><button class="btn primary" data-a="sign" data-y="1">Kiralamayı onayla</button></div>`;
     } else if (r && r.stage === 'contract' && s.pending && s.pending.pid === p.id) {
-      inner = `<div class="good">${esc(r.text)}</div><div class="small muted mt">Sözleşme süresi seçin:</div>
-        <div class="slider-row">${[1, 2, 3, 4, 5].map(y => `<button class="chip" data-a="sign" data-y="${y}">${y} yıl</button>`).join('')}</div>
-        <button class="btn block" data-a="bidCancel">Vazgeç</button>`;
+      inner = `<div class="good">${esc(r.text)}</div>${UI.negPanel(p)}`;
     } else if (p.club == null) {
       inner = `<div class="small">Serbest oyuncu: bonservis ödenmez.</div>${r ? `<div class="bad mt">${esc(r.text)}</div>` : ''}<button class="btn primary block mt" data-a="bid" data-id="${p.id}">Sözleşme teklif et</button>`;
     } else {
@@ -96,6 +96,7 @@
         <div class="slider-row">${presets.map(v => `<button class="chip ${b.fee === v ? 'on' : ''}" data-a="bidSet" data-v="${v}">${U.money(v)}</button>`).join('')}</div>
         ${r ? `<div class="${r.ok ? 'good' : 'bad'} mt">${esc(r.text)}</div>${r.counter ? `<button class="btn block mt" data-a="bidSet" data-v="${r.counter}" data-go="1">${U.money(r.counter)} teklif et</button>` : ''}` : ''}
         <button class="btn primary block mt" data-a="bid" data-id="${p.id}">Bonservis teklifi yap</button>
+        ${p.clause && !p.loan ? `<button class="btn block mt" data-a="bidSet" data-v="${p.clause}" data-go="1">Serbest kalma bedelini öde (${U.money(p.clause)})</button>` : ''}
         ${p.loan ? '' : `<button class="btn block mt" data-a="loanBid" data-id="${p.id}">🔁 Sezon sonuna kadar kirala (~${U.money(M.loanFee(p))})</button>`}
         <div class="small muted mt">Transfer bütçeniz: ${U.money(M.budget(c))}${M.isWindow(s.day) ? '' : ' · Transfer dönemi kapalı'}</div>`;
     }
@@ -106,7 +107,7 @@
   function bar(v, cls) { return `<span class="bar wide"><i style="width:${Math.round(v)}%;background:${cls}"></i></span>`; }
   UI.VIEWS.club = function () {
     const s = S(), u = s.user, c = h.club();
-    const tabs = [['office', 'Yönetim'], ['train', 'Antrenman'], ['scout', 'Gözlem'], ['fin', 'Finans'], ['career', 'Kariyer']];
+    const tabs = [['office', 'Yönetim'], ['train', 'Antrenman'], ['youth', 'Altyapı'], ['scout', 'Gözlem'], ['fin', 'Finans'], ['rec', 'Rekorlar'], ['career', 'Kariyer']];
     if (u.nat) tabs.splice(4, 0, ['nt', 'Milli Takım']);
     const tab = ui.clubTab || (c ? 'office' : 'career');
     if (tab === 'nt') { ui.view = 'national'; return UI.VIEWS.national(); }
@@ -115,7 +116,7 @@
     else if (tab === 'office') {
       const conf = u.conf;
       const lc = s.comps[`${c.lg}-${s.season}`];
-      const pos = lc ? C_st(lc).indexOf(c.id) + 1 : 0;
+      const pos = lc && lc.tbl[c.id] && lc.tbl[c.id][0] ? C_st(lc).indexOf(c.id) + 1 : 0;
       body = `<div class="panel"><h3>${esc(c.n)}</h3><div class="body"><div class="kv">
           <span>Lig</span><span>${c.lg ? esc(CM.LEAGUES[c.lg].n) + (pos ? ` (${pos}.)` : '') : '-'}</span>
           <span>İtibar</span><span class="stars">${h.repStars(c.rep)}</span>
@@ -129,7 +130,10 @@
           ${bar(conf, conf >= 55 ? 'var(--good)' : conf >= 30 ? 'var(--warn)' : 'var(--bad)')}</div></div>
         ${(c.trophies || []).length ? `<div class="panel"><h3>Kupalar (oyun içi)</h3><div class="body small">${c.trophies.slice().reverse().map(x => `🏆 ${x.s}/${String(x.s + 1).slice(2)} ${esc(x.n)}`).join('<br>')}</div></div>` : ''}
         ${(c.hist || []).length ? `<div class="panel"><h3>Lig geçmişi</h3><table class="tbl"><tr><th>Sezon</th><th class="t">Lig</th><th>Sıra</th><th>P</th></tr>${c.hist.slice().reverse().map(x => `<tr><td>${x.s}/${String(x.s + 1).slice(2)}</td><td class="t">${esc(CM.LEAGUES[x.lg].n)}</td><td>${x.pos}</td><td>${x.pts}</td></tr>`).join('')}</table></div>` : ''}
+        ${UI.boardPanel(c)}
         <button class="btn block" data-a="team" data-id="${c.id}">Kulüp kartı</button>`;
+    } else if (tab === 'youth' || tab === 'rec') {
+      body = UI.clubExtra(tab, c);
     } else if (tab === 'train') {
       const tr = c.train || (c.train = { focus: 'genel', int: 'normal' });
       const ps = c.players.map(id => s.players[id]).filter(Boolean).filter(p => p.tf);
@@ -170,6 +174,7 @@
           <span>Kupalar</span><span>${(u.trophies || []).length}</span></div>
           ${(u.trophies || []).length ? `<div class="small mt">${u.trophies.map(t => `🏆 ${t.s}/${String(t.s + 1).slice(2)} ${esc(t.n)}`).join('<br>')}</div>` : ''}
           ${(u.history || []).length ? `<div class="small muted mt">${u.history.filter(x => x.s).map(x => `${x.s}/${String(x.s + 1).slice(2)} ${esc(x.club)} – ${esc(x.lg)} ${x.pos}.`).join('<br>')}</div>` : ''}</div></div>
+        ${UI.careerExtra()}
         <button class="btn primary block" data-a="saveGame">💾 Kaydet</button>
         <button class="btn block mt" data-a="toMenu">Ana menü</button>
         <button class="btn danger block mt" data-a="resign">${c ? 'İstifa et' : 'Kariyeri sil'}</button>`;

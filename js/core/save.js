@@ -20,6 +20,9 @@
     if (p.lastPlay) ext.lp = p.lastPlay;
     if (p.away) ext.aw = p.away;
     if (p.loan) ext.lo = p.loan;
+    const x = {};
+    ['talkDay', 'promise', 'wantsOut', 'clause', 'gb', 'ms', 'aw'].forEach(k => { if (p[k]) x[k] = p[k]; });
+    if (Object.keys(x).length) ext.x = x;
     if (Object.keys(ext).length) o.push(ext);
     return o;
   }
@@ -27,12 +30,12 @@
     const a = {};
     A().forEach((k, i) => { a[k] = o[6][i]; });
     const e = o[15] || {};
-    return {
+    return Object.assign({
       id: o[0], n: o[1], nat: o[2], b: o[3], pos: o[4], sec: o[5] ? o[5].split('/') : [], a, pa: o[7], club: o[8], wage: o[9], ce: o[10],
       cond: o[11], mor: o[12], inj: o[13], gen: !!(o[14] & 1), listed: !!(o[14] & 2), ntOnly: !!(o[14] & 4) || undefined, loanListed: !!(o[14] & 8),
       injN: e.i || '', sus: e.s || {}, yc: e.y || {}, st: e.t || {}, car: e.c || [], tf: e.f || null,
       ntCaps: e.nc ? e.nc[0] : 0, ntGoals: e.nc ? e.nc[1] : 0, lastPlay: e.lp || 0, away: e.aw || 0, loan: e.lo || null
-    };
+    }, e.x || {});
   }
   function pack(S) {
     const out = {};

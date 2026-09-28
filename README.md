@@ -42,6 +42,17 @@ Oyun **2026/27 sezonunun başında (1 Temmuz 2026)** başlar.
 - **Antrenman**: takım odağı (genel, fiziksel, hücum, savunma, taktik, duran top) ve yoğunluk; bireysel antrenman odağı.
 - **Kulüp**: finans (bilet, TV, sponsor, ödüller, maaşlar), altyapı (her yıl 15 Mart'ta genç oyuncular), sözleşme yenileme/fesih.
 - Sakatlıklar, turnuvaya göre ayrı sarı kart birikimi ve cezalar, kondisyon, moral, oyuncu gelişimi, yaşlanma ve emeklilik.
+- **Menajerlik**: oyuncu kişilikleri (lider, profesyonel, hırslı, kaprisli...), oyuncuyla konuşma (övgü, eleştiri, süre sözü,
+  ikna, kaptanlık), mutsuz oyuncuların transfer talepleri, maç öncesi/sonrası basın toplantıları.
+- **Maç içi yönetim**: kenardan bağırma (Hücuma kalkın!, Geride kalın! ...), devre arası konuşması, mini saha, baskı grafiği.
+- **Sözleşmeler**: maaş, süre, imza parası, gol primi, serbest kalma maddesi ve menajer ücretiyle pazarlık (en fazla 4 tur);
+  İspanyol kulüplerinde serbest kalma bedelleri; başka kulüpler kullanıcının oyuncusunun maddesini ödeyebilir.
+- **Kulüp**: yönetimden ek bütçe isteme, antrenman/altyapı tesisi ve stadyum yatırımları, yurt dışı altyapı gözlem ağı,
+  "harika çocuk" haberleri, oyun içi kulüp rekorları ve golcüler listesi.
+- **Kariyer**: menajer itibarı, yapay zekâ kulüplerinde teknik direktör değişiklikleri ve iş teklifleri, milli takım teklifleri.
+- **Ödüller**: ayın oyuncusu ve menajeri, lig ödülleri ve sezonun 11'i, Avrupa Altın Ayakkabı, Ballon d'Or; ödül arşivi ve
+  sezon sonu özeti (yönetimin karnesi).
+- **Yardımcı antrenör**: rakip raporu, diziliş ve mentalite önerileri; izleme listesi ve oyuncu karşılaştırma.
 - Kulüp renkleri ve desenleriyle çizilen armalar (gerçek logolar değil).
 - Önemli mesajlarda (transfer/kiralama teklifi, iş teklifi, görevden alınma) oyun durur ve yanıt ekranını açar.
 - Otomatik kayıt (IndexedDB, sıkıştırılmış).

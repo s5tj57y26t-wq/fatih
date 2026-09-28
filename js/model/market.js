@@ -90,7 +90,8 @@
     u.history.push({ club: c.n, from: u.started, to: s.day });
     news('GÖREVDEN ALINDINIZ', `${c.n} yönetim kurulu, kötü gidişat nedeniyle görevinize son verdi. İş tekliflerini Haberler ekranından değerlendirebilirsiniz.`, { type: 'board', urgent: true });
     u.club = null;
-    jobOffers(c.rep - 8);
+    if (CM.X) CM.X.addRep(-8);
+    jobOffers(CM.X ? CM.X.urep() + 4 : c.rep - 8);
   }
   function jobOffers(maxRep) {
     const s = S(), u = s.user;
@@ -101,6 +102,7 @@
   }
   function takeJob(id) {
     const s = S(), u = s.user;
+    if (u.club != null && u.club !== id) { u.history.push({ club: club(u.club).n, from: u.started, to: s.day }); news('Kulüpten ayrılık', `${club(u.club).n} ile yollarınızı ayırdınız.`, { type: 'board' }); }
     u.club = id; u.sacked = false; u.conf = 55; u.started = s.day; u.offers = [];
     club(id).train = { focus: 'genel', int: 'normal' };
     setBudget(club(id), true);
@@ -151,14 +153,18 @@
     const rf = refuses(p, me);
     if (rf) return { ok: false, text: rf };
     if (p.club == null) {
-      s.pending = { pid, fee: 0, wage: wageDemand(p, me) };
+      s.pending = { pid, fee: 0, wage: wageDemand(p, me), kind: 'free' };
       return { ok: true, stage: 'contract', text: `${p.n} serbest oyuncu. Haftalık ${U.money(s.pending.wage)} maaş istiyor.`, wage: s.pending.wage };
     }
     if (!isWindow(s.day)) return { ok: false, text: 'Transfer dönemi kapalı. Yalnızca serbest oyuncularla anlaşabilirsiniz.' };
     if (fee > budget(me)) return { ok: false, text: `Bu teklif transfer bütçenizi (${U.money(budget(me))}) aşıyor.` };
     const from = club(p.club), ask = asking(p);
+    if (p.clause && fee >= p.clause) {
+      s.pending = { pid, fee: p.clause, wage: wageDemand(p, me), kind: 'buy' };
+      return { ok: true, stage: 'contract', text: `Serbest kalma bedeli (${U.money(p.clause)}) ödendi; ${from.n} transferi engelleyemez. ${p.n} haftalık ${U.money(s.pending.wage)} maaş istiyor.`, wage: s.pending.wage };
+    }
     if (fee >= ask) {
-      s.pending = { pid, fee, wage: wageDemand(p, me) };
+      s.pending = { pid, fee, wage: wageDemand(p, me), kind: 'buy' };
       return { ok: true, stage: 'contract', text: `${from.n} ${U.money(fee)} teklifinizi kabul etti. ${p.n} haftalık ${U.money(s.pending.wage)} maaş istiyor.`, wage: s.pending.wage };
     }
     if (fee >= ask * 0.75) return { ok: false, counter: ask, text: `${from.n} teklifinizi reddetti ancak ${U.money(ask)} karşılığında satmaya hazır.` };
@@ -193,8 +199,63 @@
       from.tactic.subs = from.tactic.subs.filter(id => id !== p.id);
     }
     if (to) { to.players.push(p.id); to.money -= fee; to.fin.tin += fee; p.club = to.id; } else p.club = null;
-    p.listed = false; p.loanListed = false; p.away = 0;
+    p.listed = false; p.loanListed = false; p.away = 0; p.wantsOut = false; p.promise = null;
     (p.car = p.car || []).push({ s: S().season, c: to ? to.n : 'Serbest', fee });
+    CM.X && CM.X.onTransfer(p, from, to, fee);
+  }
+
+  // ---------- Sözleşme pazarlığı ----------
+  // Terimler: haftalık maaş, süre, imza parası, gol primi, serbest kalma maddesi. Menajer ücreti kulüpten ödenir.
+  function agentFee(b) { return U.roundMoney(Math.max(b.wage * (b.kind === 'renew' ? 2 : 4), (b.fee || 0) * 0.04)); }
+  function renewStart(pid) {
+    const s = S(), p = s.players[pid];
+    if (!p || p.loan) return { ok: false, text: 'Bu oyuncunun sözleşmesi yenilenemez.' };
+    if (p.wantsOut && U.rand() < 0.7) return { ok: false, text: `${p.n} ayrılmak istediği için yeni sözleşme görüşmesini reddetti.` };
+    s.pending = { pid, fee: 0, wage: renewDemand(p), kind: 'renew' };
+    return { ok: true, stage: 'contract', text: `${p.n} haftalık ${U.money(s.pending.wage)} maaş talep ediyor.`, wage: s.pending.wage };
+  }
+  function negotiate(t) {
+    const s = S(), b = s.pending, me = club(s.user.club);
+    if (!b || b.loan) return { ok: false, done: true, text: 'Görüşme sona erdi.' };
+    const p = s.players[b.pid], a = age(p);
+    if (b.th == null) {
+      const pe = CM.X ? CM.X.pers(p) : 'sakin';
+      b.th = b.wage * (0.88 + U.rand() * 0.1) * (pe === 'kaprisli' ? 1.07 : pe === 'sadik' && b.kind === 'renew' ? 0.92 : 1);
+      b.round = 0;
+    }
+    if (b.kind === 'renew' && a >= 33 && t.years > 2) return { ok: false, text: `${p.n} yaşı nedeniyle en fazla 2 yıllık sözleşme kabul ediyor.` };
+    const cost = (b.fee || 0) + (t.sign || 0) + agentFee(b);
+    if (b.kind !== 'renew' && cost > budget(me)) return { ok: false, text: `Toplam maliyet (bonservis + imza parası + menajer ücreti = ${U.money(cost)}) transfer bütçenizi aşıyor.` };
+    if (b.kind === 'renew' && (t.sign || 0) + agentFee(b) > me.money) return { ok: false, text: 'Kasada imza parası ve menajer ücreti için yeterli para yok.' };
+    let val = t.wage + (t.sign || 0) / (52 * t.years) + (t.gb ? t.gb * 0.25 : 0);
+    if (a <= 24 && t.years < 3) val *= 0.95;
+    if (a >= 30 && t.years < 2) val *= 0.9;
+    if (a >= 31 && t.years >= 3) val *= 1.04;
+    if (t.clause) val *= t.clause <= P.valueOf(p) * 2 ? 1.06 : 1.03;
+    b.round++;
+    if (val >= b.th) { const txt = finalizeContract(t); return { ok: true, done: true, text: txt }; }
+    if (b.round >= 4) { s.pending = null; return { ok: false, done: true, text: `${p.n}'in menajeri görüşmeleri sonlandırdı.` }; }
+    const ask = U.roundMoney(b.th * (1 + 0.035 * (4 - b.round)));
+    return { ok: false, counter: ask, text: `${p.n}'in menajeri teklifi yetersiz buldu. Haftalık ${U.money(ask)} civarında maaş bekliyor${a <= 24 && t.years < 3 ? ' ve daha uzun sözleşme istiyor' : ''}. (${4 - b.round} görüşme hakkınız kaldı)` };
+  }
+  function finalizeContract(t) {
+    const s = S(), b = s.pending, me = club(s.user.club), p = s.players[b.pid];
+    const af = agentFee(b), sign = t.sign || 0;
+    if (b.kind === 'renew') {
+      p.mor = U.clamp(p.mor + 8, 0, 100);
+    } else {
+      move(p, me, b.fee);
+      me.tb = Math.max(0, (me.tb || 0) - b.fee - sign - af);
+      p.mor = 80; s.known[p.id] = 2;
+    }
+    me.money -= sign + af; me.fin.wages += sign + af;
+    p.wage = U.roundMoney(t.wage); p.ce = s.season + t.years; p.gb = t.gb || 0;
+    p.clause = t.clause || (me.cty === 'ESP' ? U.roundMoney(P.valueOf(p) * 3) : 0);
+    const extra = `Sözleşme: ${t.years} yıl, haftalık ${U.money(p.wage)}${sign ? ', imza parası ' + U.money(sign) : ''}${p.gb ? ', gol başına ' + U.money(p.gb) + ' prim' : ''}${p.clause ? ', serbest kalma bedeli ' + U.money(p.clause) : ''}. Menajer ücreti: ${U.money(af)}.`;
+    if (b.kind === 'renew') news('Sözleşme yenilendi', `${p.n} yeni sözleşme imzaladı. ${extra}`, { type: 'transfer' });
+    else news('Transfer tamamlandı', `${p.n} ${b.fee ? U.money(b.fee) + ' bonservisle' : 'bedelsiz olarak'} ${me.n}'a katıldı. ${extra}`, { type: 'transfer' });
+    s.pending = null;
+    return b.kind === 'renew' ? `${p.n} ile anlaşma sağlandı!` : `${p.n} ile anlaşma sağlandı, transfer tamamlandı!`;
   }
 
   // ---------- Kiralık ----------
@@ -289,7 +350,7 @@
         news('Kiralama teklifi', `${b.n}, ${p.n}'i sezon sonuna kadar kiralamak istiyor.\nKiralama bedeli: ${U.money(fee)}. Oyuncunun maaşını ${b.n} ödeyecek.`, { type: 'offer', offerId: o.id, urgent: true });
         return;
       }
-      const ch = p.listed ? 0.3 : (P.ovr(p) >= 78 && age(p) <= 29 ? 0.025 : 0);
+      const ch = (p.listed ? 0.3 : (P.ovr(p) >= 78 && age(p) <= 29 ? 0.025 : 0)) + (p.wantsOut ? 0.25 : 0);
       if (U.rand() >= ch) return;
       const amount = U.roundMoney(v * (p.listed ? 0.6 + U.rand() * 0.35 : 0.95 + U.rand() * 0.35));
       const buyers = Object.values(s.clubs).filter(c => c.id !== u.club && c.lg && c.money > amount * 1.2 && c.players.length < MAX_SQUAD - 2 && c.rep >= me.rep - 25);
@@ -342,6 +403,24 @@
     o.amount = Math.max(o.amount, next);
     if (o.round === 2) o.max = o.amount; // son teklif
     return { ok: true, counter: o.amount, text: `${b.n} talebinizi yüksek buldu ve teklifini ${U.money(o.amount)} olarak güncelledi.${o.round === 2 ? ' Bu son teklifleri.' : ''}` };
+  }
+
+  // Serbest kalma maddesini ödeyerek kullanıcının oyuncusunu alan kulüpler
+  function clauseRaids() {
+    const s = S(), u = s.user, me = u && u.club != null ? club(u.club) : null;
+    if (!me) return;
+    plist(me).forEach(p => {
+      if (!p.clause || p.loan || me.players.length <= MIN_SQUAD || U.rand() > (p.wantsOut ? 0.25 : 0.06)) return;
+      if (p.clause > P.valueOf(p) * 1.6 && !p.wantsOut) return;
+      const buyers = Object.values(s.clubs).filter(c => c.lg && c.id !== me.id && c.money > p.clause * 1.3 && c.rep >= me.rep - 6 && CM.Sim.strengthOf(c) <= P.ovr(p) + 3);
+      if (!buyers.length) return;
+      const b = U.weighted(buyers, c => c.rep * c.rep);
+      const fee = p.clause;
+      move(p, b, fee);
+      me.tb = (me.tb || 0) + Math.round(fee * 0.5);
+      p.wage = wageDemand(p, b); p.ce = s.season + U.ri(3, 5); p.clause = 0;
+      news('Serbest kalma maddesi ödendi!', `${b.n}, ${p.n}'in ${U.money(fee)} tutarındaki serbest kalma bedelini ödedi ve oyuncu kulübünüzden ayrıldı.`, { type: 'transfer', urgent: true });
+    });
   }
 
   // Yapay zekâ transferleri (transfer dönemlerinde)
@@ -405,7 +484,8 @@
       for (const pid of c.players) { const p = s.players[pid]; if (p) wages += p.wage; }
       // İşletme giderleri: personel, tesis, altyapı, vergiler, borç ödemeleri
       const ops = U.roundMoney(inc * 0.62 + (c.cap || 10000) * 6);
-      c.money += inc - wages - ops;
+      const ynet = c.ynet && u && c.id === u.club ? 5000 : 0;
+      c.money += inc - wages - ops - ynet;
       c.fin.tv += inc; c.fin.wages += wages; c.fin.ops = (c.fin.ops || 0) + ops;
       c.wageBill = wages; c.weekInc = inc; c.weekOps = ops;
       // AI kulüplerin borç kontrolü
@@ -419,7 +499,7 @@
       if (p.club != null && uc && p.club === uc.id) {
         const I = TRAIN_INT[tr.int];
         const focus = TRAIN_FOCUS[tr.focus].attrs.concat(p.tf ? [p.tf, p.tf] : []);
-        P.develop(p, s.season, 0.042 * I.dev, focus);
+        P.develop(p, s.season, 0.042 * I.dev * (CM.X ? 0.8 + 0.1 * CM.X.trainF(uc) : 1), focus);
         if (p.inj <= 0 && U.rand() < I.inj) { const j = CM.Sim.rollInjury(); p.inj = Math.ceil(j.days / 2); p.injN = j.n + ' (antrenman)'; news('Antrenman sakatlığı', `${p.n} antrenmanda sakatlandı (${p.injN}). ${Math.max(1, Math.round(p.inj / 7))} hafta yok.`, { type: 'squad' }); }
         p.cond = U.clamp(p.cond + I.cond, 30, 100);
       } else P.develop(p, s.season, 0.036);
@@ -432,7 +512,7 @@
       if (uc.money < 0 && U.ymd(d).d <= 7) { u.conf = U.clamp(u.conf - 2, 0, 100); news('Mali uyarı', `Kulüp hesabı ekside (${U.money(uc.money)}). Yönetim maaş yükünü azaltmanızı istiyor.`, { type: 'board' }); }
       if (u.conf < 20 && U.ymd(d).d <= 7) news('Yönetimden uyarı', 'Yönetim kurulu sonuçlardan endişeli. Durum düzelmezse göreviniz tehlikeye girebilir.', { type: 'board' });
     }
-    if (isWindow(d) && isWindow(d + 3)) incomingOffers();
+    if (isWindow(d) && isWindow(d + 3)) { incomingOffers(); clauseRaids(); }
     scoutingTick(7);
   }
   // Yapay zekâ kulüplerinin transfer politikası: her dönem başında fazla, az süre alan ve
@@ -539,13 +619,17 @@
       const list = [];
       for (let i = 0; i < n; i++) {
         const pos = U.pick(['GK', 'CB', 'CB', 'LB', 'RB', 'DM', 'CM', 'CM', 'AM', 'LW', 'RW', 'ST', 'ST']);
-        const p = P.generate(pos, Math.round(base + U.gauss() * 4), U.ri(16, 17), c.cty && CM.DB.nations[c.cty] ? c.cty : 'ENG', s.season, { youth: true });
-        p.pa = Math.min(90, p.pa + c.youth);
+        const net = isU && c.ynet && i === 0 ? c.ynet : null;
+        const p = P.generate(pos, Math.round(base + U.gauss() * 4 + (net ? 2 : 0)), U.ri(16, 17), net || (c.cty && CM.DB.nations[c.cty] ? c.cty : 'ENG'), s.season, { youth: true });
+        p.pa = Math.min(92, p.pa + c.youth + (net ? 3 : 0));
         p.id = s.nextPid++; p.club = c.id; p.wage = 500; p.ce = s.season + 3;
         s.players[p.id] = p; c.players.push(p.id); list.push(p);
         if (isU) s.known[p.id] = 2;
       }
-      if (isU) news('Altyapıdan yeni oyuncular', `Altyapıdan A takıma yükselen oyuncular:\n${list.map(p => `• ${p.n} (${P.POS_LONG[p.pos]}, ${age(p)})`).join('\n')}`, { type: 'squad' });
+      if (isU) {
+        news('Altyapıdan yeni oyuncular', `Altyapıdan A takıma yükselen oyuncular:\n${list.map(p => `• ${p.n} (${P.POS_LONG[p.pos]}, ${age(p)}${p.nat !== c.cty ? ', ' + (CM.DB.nations[p.nat] || {}).n : ''})`).join('\n')}${c.ynet ? '\n\nYurt dışı gözlem ağınız bir oyuncu kazandırdı.' : ''}`, { type: 'squad' });
+        list.filter(p => p.pa >= 84).forEach(p => news('Harika çocuk!', `Altyapı sorumlunuz ${p.n} için "yılların yeteneği" diyor. ${age(p)} yaşındaki oyuncunun potansiyeli çok yüksek.`, { type: 'trophy', pid: p.id }));
+      }
     });
   }
 
@@ -620,7 +704,7 @@
   CM.Market = {
     TRAIN_FOCUS, TRAIN_INT, IND_FOCUS, MAX_SQUAD, MIN_SQUAD, isWindow, initUser, boardNewSeason, boardAfterMatch, takeJob, jobOffers,
     asking, wageDemand, makeBid, acceptContract, move, release, renewDemand, renew, toggleList, answerOffer, counterOffer, weekly, daily,
-    loanBid, loanFee, loanable, toggleLoanList, returnLoans, budget, setBudget, aiListing,
+    loanBid, loanFee, loanable, toggleLoanList, returnLoans, budget, setBudget, aiListing, negotiate, renewStart, agentFee,
     scout, known, fuzz, endSeason, setExpectation
   };
 })(typeof window !== 'undefined' ? window : globalThis);

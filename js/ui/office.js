@@ -15,6 +15,7 @@
       if (p.ntOnly || p.club === me) continue;
       if (f.free && p.club != null) continue;
       if (f.listed && !p.listed) continue;
+      if (f.loanL && !p.loanListed) continue;
       if (f.pos !== 'ALL' && (f.pos === 'GK' ? p.pos !== 'GK' : P.LINE[p.pos] !== f.pos || p.pos === 'GK')) continue;
       if (h.age(p) > f.maxAge) continue;
       const c = p.club != null ? s.clubs[p.club] : null;
@@ -64,7 +65,8 @@
         </div>
         <div class="chips mt">
           <button class="chip ${f.free ? 'on' : ''}" data-a="trFlag" data-v="free">Serbest</button>
-          <button class="chip ${f.listed ? 'on' : ''}" data-a="trFlag" data-v="listed">Satılık</button>
+          <button class="chip ${f.listed ? 'on' : ''}" data-a="trFlag" data-v="listed">💲 Satılık</button>
+          <button class="chip ${f.loanL ? 'on' : ''}" data-a="trFlag" data-v="loanL">🔄 Kiralık</button>
           <button class="chip ${f.knownOnly ? 'on' : ''}" data-a="trFlag" data-v="knownOnly">Gözlemlenmiş</button>
         </div></div>
         <ul class="list" id="trList">${trList()}</ul></div>

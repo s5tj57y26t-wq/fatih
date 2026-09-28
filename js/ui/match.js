@@ -136,20 +136,21 @@
     }).join('');
   }
   function rtTxt(v) { return v == null ? '<b class="muted">-</b>' : `<b class="rt ${v >= 7.5 ? 'good' : v < 6 ? 'bad' : ''}">${v.toFixed(1)}</b>`; }
-  function lineupHtml(m, si) {
-    const s = m.sides[si];
-    const R = id => m.finished ? s.ps[id].rating : m.liveRating(s, id);
-    const on = s.on.map(o => {
-      const ps = s.ps[o.p.id];
-      return `<li>${h.posB(o.slot)}<span class="grow ellipsis">${esc(o.p.n)}${ps.g ? ' ⚽'.repeat(ps.g) : ''}${ps.a ? ' 🅰️' : ''}${ps.yc ? ' 🟨' : ''}${ps.inj ? ' 🤕' : ''}${ps.on ? ` <span class="small muted">↑${ps.on}'</span>` : ''}</span>${rtTxt(R(o.p.id))}${h.condBar(o.cond)}</li>`;
-    }).join('');
-    const off = Object.keys(s.ps).filter(id => s.ps[id].off != null).map(id => {
-      const ps = s.ps[id];
-      return `<li class="muted"><span class="grow ellipsis">${esc(m.all[id].n)} ${ps.rc ? '🟥' : '↓'} ${ps.off}'</span>${rtTxt(R(id))}</li>`;
-    }).join('');
-    return `<div class="panel"><h3>${esc(s.n)} <span class="small muted">${s.tactic.form} · ${E.MENT[s.tactic.ment] ? E.MENT[s.tactic.ment].n : ''}</span></h3>
-      <ul class="list"><li class="hdr"><span class="grow">Oyuncu</span><span>Not</span><span style="width:42px" class="center">Knd</span></li>${on}${off}</ul></div>`;
+  // İki takım yan yana, tek ekrana sığan kompakt kadro ve not tablosu
+  function lineupHtml(m) {
+    const col = si => {
+      const s = m.sides[si];
+      const R = id => m.finished ? s.ps[id].rating : m.liveRating(s, id);
+      const row = (p, slot, ps, off) => `<div class="lr${off ? ' off' : ''}"><span class="pm ${P.LINE[slot] || 'Y'}">${P.POS_TR[slot]}</span>
+        <span class="nm">${esc(E.sur(p))}${ps.g ? ' ⚽'.repeat(ps.g) : ''}${ps.a ? '🅰️' : ''}${ps.yc ? '🟨' : ''}${ps.rc ? '🟥' : ''}${ps.inj ? '🤕' : ''}${off ? ' ↓' + ps.off + "'" : ps.on ? ' ↑' + ps.on + "'" : ''}</span>
+        ${off ? '' : `<i class="cd" style="background:${condCol(s.on.find(o => o.p === p))}"></i>`}${rtTxt(R(p.id))}</div>`;
+      const on = s.on.map(o => row(o.p, o.slot, s.ps[o.p.id], false)).join('');
+      const off = Object.keys(s.ps).filter(id => s.ps[id].off != null).map(id => row(m.all[id], m.all[id].pos, s.ps[id], true)).join('');
+      return `<div class="luc"><div class="lh">${esc(s.sh || s.n)} <span class="muted">${s.tactic.form}</span></div>${on}${off}</div>`;
+    };
+    return `<div class="lu2">${col(0)}${col(1)}</div><div class="small muted center">Not · renkli nokta: kondisyon</div>`;
   }
+  function condCol(o) { const c = o ? o.cond : 100; return c >= 75 ? 'var(--good)' : c >= 55 ? 'var(--warn)' : 'var(--bad)'; }
   function renderLive() {
     const L = ui.live, m = L.m;
     const [a, b] = m.sides;
@@ -161,7 +162,7 @@
     let body = '';
     if (L.tab === 'feed') body = `<div class="feed">${L.shown.slice(-120).reverse().map(e => `<div class="${e.type}"><span class="m">${e.min ? e.min + "'" : ''}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`;
     else if (L.tab === 'stats') body = `<div class="panel"><div class="body">${statsHtml(m)}</div></div>`;
-    else body = lineupHtml(m, L.us) + lineupHtml(m, 1 - L.us);
+    else body = lineupHtml(m);
     const my = m.sides[L.us];
     const ctl = over
       ? `<button class="primary" data-a="liveEnd">DEVAM ▶</button>`

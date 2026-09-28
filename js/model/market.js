@@ -365,8 +365,9 @@
       const teamAvg = U.avg(ps.map(P.ovr).sort((a, b) => b - a).slice(0, 14));
       const target = Math.max(need.v + 2, teamAvg - 2);
       const cands = [];
+      const listed = all.filter(x => x.listed);
       for (let k = 0; k < 300; k++) {
-        const p = all[Math.floor(U.rand() * all.length)];
+        const p = listed.length && k % 3 === 0 ? listed[Math.floor(U.rand() * listed.length)] : all[Math.floor(U.rand() * all.length)];
         if (p.club === c.id || p.club === s.user.club || p.loan || lineOf(p) !== need.l) continue;
         const o = P.ovr(p);
         if (o < target || o > teamAvg + 9 || age(p) > 31) continue;
@@ -434,9 +435,55 @@
     if (isWindow(d) && isWindow(d + 3)) incomingOffers();
     scoutingTick(7);
   }
+  // Yapay zekâ kulüplerinin transfer politikası: her dönem başında fazla, az süre alan ve
+  // gelişmesi gereken genç oyuncular satılık / kiralık listesine konur
+  function aiListing() {
+    const s = S(), uc = s.user && s.user.club;
+    let nSale = 0, nLoan = 0;
+    Object.values(s.clubs).forEach(c => {
+      if (!c.lg || c.id === uc) return;
+      const ps = plist(c).filter(p => !p.loan);
+      ps.forEach(p => { p.listed = false; p.loanListed = false; });
+      const order = ps.slice().sort((a, b) => P.ovr(b) - P.ovr(a));
+      const size = c.players.length;
+      order.forEach((p, i) => {
+        const a = age(p), o = P.ovr(p);
+        const unused = i >= 18 || (p.pos === 'GK' && order.filter(x => x.pos === 'GK').indexOf(p) >= 2);
+        const young = a <= 21 && p.pa >= o + 5;
+        if (young && i >= 14) { p.loanListed = true; nLoan++; return; }
+        if (!unused) return;
+        if (a >= 23 && (size > 24 || i >= 21 || U.rand() < 0.55)) { p.listed = true; nSale++; }
+        else if (a <= 23 && U.rand() < 0.6) { p.loanListed = true; nLoan++; }
+      });
+      // Sözleşmesinin son yılındaki, ilk 11 dışındaki 29 yaş üstü oyuncular da satılık
+      order.slice(11).forEach(p => { if (!p.listed && !p.loanListed && age(p) >= 29 && p.ce <= s.season && U.rand() < 0.5) { p.listed = true; nSale++; } });
+    });
+    return { nSale, nLoan };
+  }
+  // Kiralık listesindeki oyuncular için yapay zekâ kulüpleri arasında kiralama
+  function aiLoans() {
+    const s = S(), uc = s.user && s.user.club;
+    const pool = Object.values(s.players).filter(p => p.loanListed && p.club != null && p.club !== uc && !p.loan);
+    const n = Math.max(1, Math.round(pool.length * 0.02));
+    for (let i = 0; i < n && pool.length; i++) {
+      const p = U.pick(pool), from = club(p.club);
+      const takers = Object.values(s.clubs).filter(c => c.lg && c.id !== uc && c.id !== from.id && c.rep < from.rep && c.players.length < MAX_SQUAD - 4 && foreignOk(c, p) && CM.Sim.strengthOf(c) <= P.ovr(p) + 4);
+      if (!takers.length) continue;
+      const to = U.weighted(takers, c => c.rep);
+      const fee = U.roundMoney(P.valueOf(p) * 0.03);
+      if (fee > to.money * 0.3) continue;
+      loanMove(p, to, fee);
+      if (s.known[p.id] && P.ovr(p) >= 70) news('Kiralık haberi', `${p.n}, ${from.n}'dan sezon sonuna kadar ${to.n}'a kiralandı.`, { type: 'world' });
+    }
+  }
   function daily(d) {
     const s = S(), t = U.ymd(d);
-    if (isWindow(d)) aiTransfers();
+    if (isWindow(d)) {
+      const key = s.season + (t.m <= 6 ? 'k' : 'y');
+      if (s.listingKey !== key) { s.listingKey = key; aiListing(); }
+      aiTransfers();
+      if (U.rand() < 0.5) aiLoans();
+    }
     if ((t.m === 9 && t.d === 2) || (t.m === 2 && t.d === 3)) s.offers.slice().forEach(closeOffer);
     if (t.m === 9 && t.d === 1) news('Transfer dönemi kapandı', 'Yaz transfer dönemi sona erdi. Bir sonraki dönem 2 Ocak\'ta açılacak.', { type: 'world' });
     if (t.m === 2 && t.d === 2) news('Ara transfer dönemi kapandı', 'Ocak transfer dönemi sona erdi. Yaz dönemi 1 Temmuz\'da açılacak.', { type: 'world' });
@@ -573,7 +620,7 @@
   CM.Market = {
     TRAIN_FOCUS, TRAIN_INT, IND_FOCUS, MAX_SQUAD, MIN_SQUAD, isWindow, initUser, boardNewSeason, boardAfterMatch, takeJob, jobOffers,
     asking, wageDemand, makeBid, acceptContract, move, release, renewDemand, renew, toggleList, answerOffer, counterOffer, weekly, daily,
-    loanBid, loanFee, loanable, toggleLoanList, returnLoans, budget, setBudget,
+    loanBid, loanFee, loanable, toggleLoanList, returnLoans, budget, setBudget, aiListing,
     scout, known, fuzz, endSeason, setExpectation
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -264,3 +264,13 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 .feed .build { color: #b8c4e0; font-style: italic; }
 b.rt { width: 34px; text-align: center; flex: none; font-variant-numeric: tabular-nums; }
 .score .tn .crest-i { margin: 0 2px; }
+.lu2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.luc { min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 5px; }
+.luc .lh { font-size: 11px; font-weight: 800; color: var(--accent); padding: 2px 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 1px; border-top: 1px solid #ffffff0c; line-height: 1.2; }
+.lr.off { opacity: .55; }
+.lr .pm { flex: none; width: 26px; text-align: center; font-size: 9px; font-weight: 800; border-radius: 3px; padding: 1px 0; color: #111; }
+.pm.G { background: #ffd23f; } .pm.D { background: #4fc3f7; } .pm.M { background: #7ee787; } .pm.F { background: #ff8a80; } .pm.Y { background: #9aa7c4; }
+.lr .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr .cd { flex: none; width: 7px; height: 7px; border-radius: 50%; }
+.lr b.rt, .lr b { width: 26px; font-size: 12px; text-align: right; flex: none; }

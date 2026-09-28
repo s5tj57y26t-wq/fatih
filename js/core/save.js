@@ -7,7 +7,7 @@
 
   function packPlayer(p) {
     const a = A().map(k => p.a[k]);
-    const flags = (p.gen ? 1 : 0) | (p.listed ? 2 : 0) | (p.ntOnly ? 4 : 0);
+    const flags = (p.gen ? 1 : 0) | (p.listed ? 2 : 0) | (p.ntOnly ? 4 : 0) | (p.loanListed ? 8 : 0);
     const o = [p.id, p.n, p.nat, p.b, p.pos, p.sec.join('/'), a, p.pa, p.club, p.wage, p.ce, Math.round(p.cond), Math.round(p.mor), p.inj, flags];
     const ext = {};
     if (p.injN) ext.i = p.injN;
@@ -29,7 +29,7 @@
     const e = o[15] || {};
     return {
       id: o[0], n: o[1], nat: o[2], b: o[3], pos: o[4], sec: o[5] ? o[5].split('/') : [], a, pa: o[7], club: o[8], wage: o[9], ce: o[10],
-      cond: o[11], mor: o[12], inj: o[13], gen: !!(o[14] & 1), listed: !!(o[14] & 2), ntOnly: !!(o[14] & 4) || undefined,
+      cond: o[11], mor: o[12], inj: o[13], gen: !!(o[14] & 1), listed: !!(o[14] & 2), ntOnly: !!(o[14] & 4) || undefined, loanListed: !!(o[14] & 8),
       injN: e.i || '', sus: e.s || {}, yc: e.y || {}, st: e.t || {}, car: e.c || [], tf: e.f || null,
       ntCaps: e.nc ? e.nc[0] : 0, ntGoals: e.nc ? e.nc[1] : 0, lastPlay: e.lp || 0, away: e.aw || 0, loan: e.lo || null
     };

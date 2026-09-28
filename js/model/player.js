@@ -126,7 +126,7 @@
     season = season || (CM.S ? CM.S.season : 2026);
     const A = ovr(p);
     const age = ageOf(p, season);
-    let v = 300000 * Math.pow(1.16, A - 50);
+    let v = 300000 * Math.pow(1.155, A - 50);
     v *= age <= 20 ? 1.5 : age <= 23 ? 1.35 : age <= 27 ? 1.1 : age <= 29 ? 0.85 : age <= 31 ? 0.55 : age <= 33 ? 0.3 : 0.15;
     if (age <= 24 && p.pa > A) v *= 1 + (p.pa - A) / 25;
     const left = p.ce - season;

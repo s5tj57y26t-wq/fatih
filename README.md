@@ -28,15 +28,22 @@ Oyun **2026/27 sezonunun başında (1 Temmuz 2026)** başlar.
 
 - **Kariyer**: istediğiniz ligden bir kulüp, isteğe bağlı olarak bir milli takım ile birlikte. Yönetim kurulu hedefleri, güven,
   görevden alınma ve iş teklifleri.
-- **Canlı maç**: dakika dakika Türkçe anlatım, 3 hız, devre arası, maç içi taktik; 5 değişiklik hakkı (3 pencerede, uzatmada +1),
+- **Canlı maç**: dakika dakika Türkçe anlatım (atak cümlesi, ardından sonucu), 4 hız, canlı oyuncu notları, devre arası, maç içi taktik; 5 değişiklik hakkı (3 pencerede, uzatmada +1),
   uzatmalar ve seri penaltılar, çift maçlı eşleşmelerde toplam skor. "Hızlı sonuç" seçeneği.
 - **Taktik**: 11 diziliş, mentalite, pas stili, pres, tempo, penaltıcı; mevki dışı oyuncular daha düşük verim verir.
 - **Transfer**: tüm dünyada oyuncu arama (lig, uyruk, yaş, değer filtreleri), bonservis pazarlığı, karşı teklif, maaş ve sözleşme süresi,
-  yabancı oyuncu kotaları, serbest oyuncular, transfer dönemleri (yaz ve ocak), satış listesi, gelen teklifler.
+  yabancı oyuncu kotaları, serbest oyuncular, transfer dönemleri (yaz ve ocak; dönem içinde oyun 2'şer gün ilerler), satış listesi.
+  Gelen tekliflerde kabul / ret / pazarlık; teklifler dönem kapanınca geçersiz olur.
+- **Kiralık**: diğer kulüplerin kadro dışı oyuncularını sezon sonuna kadar kiralama; kendi oyuncularınızı kiralık listesine koyma.
+  Kiralıklar 30 Haziran'da kulüplerine döner.
+- **Yönetim bütçesi**: transfer bütçesi her sezon kasaya ve yönetimin güvenine göre belirlenir; satışların yarısı bütçeye eklenir.
+  Gelirlerin yanında maaş ve işletme giderleri vardır.
 - **Gözlem**: tanımadığınız oyuncuların özellikleri aralık olarak görünür; tek oyuncu (1 hafta), lig veya ülke (4 hafta) gözlemi.
 - **Antrenman**: takım odağı (genel, fiziksel, hücum, savunma, taktik, duran top) ve yoğunluk; bireysel antrenman odağı.
 - **Kulüp**: finans (bilet, TV, sponsor, ödüller, maaşlar), altyapı (her yıl 15 Mart'ta genç oyuncular), sözleşme yenileme/fesih.
 - Sakatlıklar, turnuvaya göre ayrı sarı kart birikimi ve cezalar, kondisyon, moral, oyuncu gelişimi, yaşlanma ve emeklilik.
+- Kulüp renkleri ve desenleriyle çizilen armalar (gerçek logolar değil).
+- Önemli mesajlarda (transfer/kiralama teklifi, iş teklifi, görevden alınma) oyun durur ve yanıt ekranını açar.
 - Otomatik kayıt (IndexedDB, sıkıştırılmış).
 
 ## Telefonda oynamak

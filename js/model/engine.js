@@ -352,24 +352,35 @@
       });
     }
 
+    // Oyuncu notu; k: maçın ne kadarının oynandığı (canlı notta sonuç etkisi zamanla artar)
+    rate(s, id, pos, noise, k) {
+      const o = this.sides[1 - s.idx], ps = s.ps[id], p = this.all[id];
+      const res = s.st.g > o.st.g ? 0.4 : s.st.g === o.st.g ? 0 : -0.3;
+      const conc = o.st.g, clean = conc === 0 ? k : 0;
+      let r = 6.2 + res * k + ps.g * 1.0 + ps.a * 0.5 + noise + (P.roleRating(p, pos) - 12) * 0.08;
+      if (pos === 'GK') r += ps.sv * 0.2 - conc * 0.3 + clean * 0.6;
+      else if (P.LINE[pos] === 'D') r += -conc * 0.2 + clean * 0.5;
+      if (ps.rc) r -= 1.5;
+      r -= ps.yc * 0.15;
+      if (ps.mins < 20) r = 6 + (r - 6) * 0.4;
+      return Math.round(U.clamp(r, 3, 10) * 10) / 10;
+    }
+    liveRating(s, id) {
+      const ps = s.ps[id]; if (!ps || (ps.mins <= 0 && !ps.started)) return null;
+      const on = s.on.find(x => x.p.id === +id);
+      const pos = on ? on.slot : this.all[id].pos;
+      // Deterministik küçük sapma: oyuncunun maç içi yıpranmasına göre
+      const noise = on ? (on.cond - 70) / 100 : 0;
+      return this.rate(s, id, pos, noise * 0.5, Math.min(1, this.minute / 90));
+    }
     finalize() {
       this.sides.forEach(s => {
-        const o = this.sides[1 - s.idx];
-        const res = s.st.g > o.st.g ? 0.4 : s.st.g === o.st.g ? 0 : -0.3;
-        const conc = o.st.g;
         const slotOf = {};
         s.on.forEach(x => { slotOf[x.p.id] = x.slot; s.ps[x.p.id].cond = x.cond; });
         for (const id in s.ps) {
           const ps = s.ps[id];
           if (ps.mins <= 0 && !ps.started) continue;
-          const p = this.all[id];
-          const pos = slotOf[id] || p.pos;
-          let r = 6.2 + res + ps.g * 1.0 + ps.a * 0.5 + U.gauss() * 0.9 + (P.roleRating(p, pos) - 12) * 0.08;
-          if (pos === 'GK') r += ps.sv * 0.2 - conc * 0.3 + (conc === 0 ? 0.6 : 0);
-          else if (P.LINE[pos] === 'D') r += -conc * 0.2 + (conc === 0 ? 0.5 : 0);
-          if (ps.rc) r -= 1.5;
-          if (ps.mins < 20) r = 6 + (r - 6) * 0.4;
-          ps.rating = Math.round(U.clamp(r, 3, 10) * 10) / 10;
+          ps.rating = this.rate(s, id, slotOf[id] || this.all[id].pos, U.gauss() * 0.8, 1);
         }
       });
       const [h, a] = this.sides;

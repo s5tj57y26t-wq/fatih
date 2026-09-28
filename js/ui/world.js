@@ -281,7 +281,7 @@
       ? `<span>Konfederasyon</span><span>${esc(o.conf)}</span><span>Elo</span><span>${Math.round(o.elo)} (${CM.Intl.ranking().indexOf(o.code) + 1}.)</span>`
       : `<span>Lig</span><span>${lg ? esc(lg.n) + (pos ? ` · ${pos}.` : '') : 'Ligi modellenmiyor'}</span><span>Stadyum</span><span>${esc(o.st || '-')}${o.cap ? ' (' + o.cap.toLocaleString('tr-TR') + ')' : ''}</span><span>İtibar</span><span class="stars">${h.repStars(o.rep)}</span>`;
     h.openModal(`<button class="close" data-a="close">✕</button>
-      <div class="row">${h.kit(o.c1, o.c2, 34)}<div><h2>${esc(o.n)}</h2><div class="small muted">${nat ? 'Milli takım' : esc(h.nat(o.cty).n || '')}</div></div></div>
+      <div class="row">${h.crest(o, 34)}<div><h2>${esc(o.n)}</h2><div class="small muted">${nat ? 'Milli takım' : esc(h.nat(o.cty).n || '')}</div></div></div>
       <div class="panel mt"><div class="body"><div class="kv">${info}<span>Güç</span><span>${Math.round(CM.Sim.strengthOf(o))}</span></div></div></div>
       ${tro.length ? `<div class="panel"><h3>Kupalar (oyun içi)</h3><div class="body small">${tro.map(x => `🏆 ${x.s}/${String(x.s + 1).slice(2)} ${esc(x.n)}`).join('<br>')}</div></div>` : ''}
       <div class="panel"><h3>Sıradaki maçlar</h3><ul class="list fxl">${up.map(f => fxRow(f, { comp: true, team: t })).join('') || '<li class="muted">Yok</li>'}</ul></div>

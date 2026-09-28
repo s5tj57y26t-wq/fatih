@@ -69,12 +69,49 @@
     if (Object.values(p.sus || {}).some(v => v > 0)) s += ' <span class="ic-s" title="Cezalı">🟥</span>';
     if (p.away && p.away >= S().day) s += ' <span class="ic-s" title="Milli takımda">🌍</span>';
     if (p.listed) s += ' <span class="ic-s" title="Satış listesinde">💲</span>';
+    if (p.loanListed) s += ' <span class="ic-s" title="Kiralık listesinde">🔄</span>';
+    if (p.loan) s += ' <span class="ic-s" title="Kiralık oyuncu">🔁</span>';
     if (p.club != null && p.ce <= S().season) s += ' <span class="ic-s" title="Sözleşmesi bu sezon bitiyor">📝</span>';
     if (p.gen) s += ' <span class="ic-s gen" title="Kurgusal oyuncu (veritabanı tamamlayıcı)">·</span>';
     return s;
   }
   function kit(c1, c2, size) { size = size || 22; return `<span class="kit" style="width:${size}px;height:${size}px;background:${c1};border-color:${c2}"></span>`; }
-  function teamLink(t) { const o = C.tObj(t); if (!o) return '?'; return `<span class="tl" data-a="team" data-id="${esc(t)}">${esc(o.n)}</span>`; }
+  // Kulüp arması: kulüp renkleri ve kulübe özgü desenle çizilen kalkan (gerçek logolar kullanılmaz)
+  let crestN = 0;
+  function crest(o, size) {
+    size = size || 22;
+    if (!o) return '';
+    const c1 = o.c1 || '#1a3a7a', c2 = o.c2 || '#ffffff';
+    const nat = !!o.code && !o.players;
+    const hs = Math.abs(U.hash(String(o.key || (typeof o.id === 'string' ? o.id : '') || o.code || o.n)));
+    const txt = esc(String(o.sh || o.code || o.n.slice(0, 3)).slice(0, 3).toUpperCase());
+    const id = 'cr' + (++crestN);
+    if (nat) {
+      const bands = hs % 3 === 0 ? `<rect width="48" height="16" fill="${c1}"/><rect y="16" width="48" height="16" fill="${c2}"/>`
+        : hs % 3 === 1 ? `<rect width="16" height="32" fill="${c1}"/><rect x="16" width="16" height="32" fill="${c2}"/><rect x="32" width="16" height="32" fill="${c1}"/>`
+        : `<rect width="48" height="32" fill="${c1}"/><rect y="11" width="48" height="10" fill="${c2}"/>`;
+      return `<svg class="crest-i" width="${Math.round(size * 1.3)}" height="${Math.round(size * 0.87)}" viewBox="0 0 48 32" aria-hidden="true"><clipPath id="${id}"><rect width="48" height="32" rx="4"/></clipPath><g clip-path="url(#${id})">${bands}</g>
+        <rect x=".75" y=".75" width="46.5" height="30.5" rx="4" fill="none" stroke="#0006" stroke-width="1.5"/>
+        <text x="24" y="21" text-anchor="middle" font-size="12" font-weight="900" fill="#fff" stroke="#000a" stroke-width="2.4" paint-order="stroke" font-family="Arial,sans-serif">${txt}</text></svg>`;
+    }
+    const shield = 'M4 3H36V21C36 34 28 41 20 45C12 41 4 34 4 21Z';
+    const P = [
+      `<rect width="40" height="48" fill="${c1}"/>`,
+      `<rect width="40" height="48" fill="${c1}"/>${[8, 24].map(x => `<rect x="${x}" width="8" height="48" fill="${c2}"/>`).join('')}`,
+      `<rect width="20" height="48" fill="${c1}"/><rect x="20" width="20" height="48" fill="${c2}"/>`,
+      `<rect width="40" height="48" fill="${c1}"/><path d="M-4 8L8 -4L46 34L34 46Z" fill="${c2}"/>`,
+      `<rect width="40" height="48" fill="${c1}"/>${[11, 27].map(y => `<rect y="${y}" width="40" height="8" fill="${c2}"/>`).join('')}`,
+      `<rect width="40" height="48" fill="${c1}"/><path d="M0 12L20 26L40 12V20L20 34L0 20Z" fill="${c2}"/>`,
+      `<rect width="40" height="48" fill="${c1}"/><rect x="20" width="20" height="22" fill="${c2}"/><rect y="22" width="20" height="26" fill="${c2}"/>`,
+      `<rect width="40" height="48" fill="${c1}"/><rect x="15" width="10" height="48" fill="${c2}"/>`
+    ];
+    const pat = P[hs % P.length];
+    const top = (hs >> 3) % 2 ? `<rect width="40" height="10" fill="${c2}"/><text x="20" y="8.6" text-anchor="middle" font-size="7" font-weight="900" fill="${c1}" font-family="Arial,sans-serif">★</text>` : '';
+    return `<svg class="crest-i" width="${size}" height="${Math.round(size * 1.15)}" viewBox="0 0 40 48" aria-hidden="true"><clipPath id="${id}"><path d="${shield}"/></clipPath>
+      <g clip-path="url(#${id})">${pat}${top}</g><path d="${shield}" fill="none" stroke="${c2}" stroke-width="2.2"/><path d="${shield}" fill="none" stroke="#0007" stroke-width=".8"/>
+      <text x="20" y="${top ? 30 : 28}" text-anchor="middle" font-size="${txt.length > 2 ? 11 : 13}" font-weight="900" fill="#fff" stroke="#000b" stroke-width="2.6" paint-order="stroke" font-family="Arial,sans-serif">${txt}</text></svg>`;
+  }
+  function teamLink(t, noCrest) { const o = C.tObj(t); if (!o) return '?'; return `${noCrest ? '' : crest(o, 15) + ' '}<span class="tl" data-a="team" data-id="${esc(t)}">${esc(o.n)}</span>`; }
   const dstr = d => U.fmtDay(d, 'short');
   function compName(cid) { const c = S().comps[cid]; return c ? c.sh || c.n : ''; }
 
@@ -85,7 +122,7 @@
     return t;
   }
 
-  UI.h = { toast, openModal, closeModal, busy, club, age, nat, flag, posB, attrCls, ovrCls, condBar, moraleTxt, stars, repStars, ovrTxt, ovrB, statusIcons, kit, teamLink, dstr, compName, seasonStats };
+  UI.h = { toast, openModal, closeModal, busy, club, age, nat, flag, posB, attrCls, ovrCls, condBar, moraleTxt, stars, repStars, ovrTxt, ovrB, statusIcons, kit, crest, teamLink, dstr, compName, seasonStats };
 
   // ---------- Başlangıç ----------
   function renderStart(meta) {
@@ -112,7 +149,7 @@
             ${Object.keys(CM.DB.nations).filter(k => k !== 'RUS').sort((a, b) => nat(a).n.localeCompare(nat(b).n, 'tr')).map(k => `<option value="${k}" ${k === st.nat ? 'selected' : ''}>${esc(nat(k).n)}</option>`).join('')}</select></label>
         </div></div>
         <div class="panel"><h3>${esc(L.n)} · ${clubs.length} kulüp</h3><ul class="list">
-          ${clubs.map(c => `<li class="tap" data-a="pickClub" data-id="${c.id}">${kit(c.c1, c.c2)}
+          ${clubs.map(c => `<li class="tap" data-a="pickClub" data-id="${c.id}">${crest(c)}
             <div class="grow"><div class="ellipsis"><b>${esc(c.n)}</b></div><div class="stars">${repStars(c.rep)}</div></div>
             <div class="right small muted">${esc(c.st || '')}</div></li>`).join('')}
         </ul></div>
@@ -137,9 +174,9 @@
     const V = UI.VIEWS[ui.view] || UI.VIEWS.inbox;
     $app.innerHTML = `
       <div class="top">
-        <div class="crest" style="background:${c ? c.c1 : '#333'};color:${c ? c.c2 : '#fff'}">${esc(c ? c.sh : '—')}</div>
+        <div class="crest-top">${c ? crest(c, 34) : ''}</div>
         <div class="info"><div class="tname">${esc(c ? c.n : 'İşsiz menajer')}</div>
-          <div class="sub">${U.fmtDay(s.day, 'dow')}${c ? ` · <b>${U.money(c.money)}</b>` : ''}</div></div>
+          <div class="sub">${U.fmtDay(s.day, 'dow')}${c ? ` · Transfer: <b>${U.money(M.budget(c))}</b>` : ''}</div></div>
         <button class="btn-continue" data-a="continue">DEVAM ▶</button>
       </div>
       <div class="content" id="content">${V()}</div>
@@ -156,7 +193,7 @@
     let head = '';
     if (!c) {
       const offers = (u.offers || []).map(id => s.clubs[id]).filter(Boolean);
-      head = `<div class="panel"><h3>İş Teklifleri</h3><ul class="list">${offers.length ? offers.map(o => `<li>${kit(o.c1, o.c2)}<div class="grow"><b>${esc(o.n)}</b><div class="small muted">${esc(o.lg ? CM.LEAGUES[o.lg].n : '')}</div></div>
+      head = `<div class="panel"><h3>İş Teklifleri</h3><ul class="list">${offers.length ? offers.map(o => `<li>${crest(o)}<div class="grow"><b>${esc(o.n)}</b><div class="small muted">${esc(o.lg ? CM.LEAGUES[o.lg].n : '')}</div></div>
         <button class="btn good" data-a="takeJob" data-id="${o.id}">Kabul</button></li>`).join('') : '<li class="muted">Şu an teklif yok. Devam ederek yeni teklif bekleyebilirsiniz.</li>'}</ul></div>`;
     } else {
       const nx = CM.Game.upcoming(c.id, 1)[0];
@@ -165,9 +202,9 @@
         const h = C.tObj(f.h), a = C.tObj(f.a), cc = s.comps[f.c];
         return `<div class="panel"><h3>${mine ? 'Sıradaki maç' : 'Milli takımın sıradaki maçı'} <span class="muted small">${U.fmtDay(f.d, 'dow')}</span></h3>
           <div class="next-match">
-            <div>${kit(h.c1, h.c2, 38)}<div class="tm">${esc(h.n)}</div></div>
+            <div>${crest(h, 38)}<div class="tm">${esc(h.n)}</div></div>
             <div class="vs">VS<div class="small muted">${esc(cc.sh || cc.n)}</div></div>
-            <div>${kit(a.c1, a.c2, 38)}<div class="tm">${esc(a.n)}</div></div>
+            <div>${crest(a, 38)}<div class="tm">${esc(a.n)}</div></div>
           </div></div>`;
       };
       if (nx) head += card(nx, true);
@@ -177,7 +214,7 @@
       const open = ui.openMsg === m.id;
       let extra = '';
       if (open && m.type === 'offer' && !m.answered && s.offers.some(o => o.id === m.offerId)) {
-        extra = `<div class="btns mt"><button class="btn good" data-a="offer" data-id="${m.offerId}" data-acc="1">Kabul Et</button><button class="btn danger" data-a="offer" data-id="${m.offerId}" data-acc="0">Reddet</button></div>`;
+        extra = `<div class="btns mt"><button class="btn primary" data-a="offerOpen" data-id="${m.offerId}">Teklifi yanıtla</button></div>`;
       }
       if (open && m.type === 'job' && m.club != null && (u.offers || []).includes(m.club)) {
         extra = `<div class="btns mt"><button class="btn good" data-a="takeJob" data-id="${m.club}">Teklifi kabul et</button></div>`;
@@ -245,10 +282,14 @@
     const o = ovrTxt(p);
     const potTxt = lvl >= 2 ? `<span class="stars">${stars((p.pa - 45) / 10)}</span>` : '<span class="muted">?</span>';
     let actions = '';
-    if (own) {
+    if (own && p.loan) {
+      actions = `<div class="panel mt"><h3>Kiralık oyuncu</h3><div class="body small">${esc(s.clubs[p.loan.from] ? s.clubs[p.loan.from].n : '')} kulübünden sezon sonuna kadar kiralık. Satılamaz ve sözleşmesi uzatılamaz.
+        <label class="field"><span>Bireysel antrenman odağı</span><select class="inp" data-ch="pTrain" data-id="${p.id}">${Object.keys(M.IND_FOCUS).map(k => `<option value="${k}" ${p.tf === k || (!p.tf && !k) ? 'selected' : ''}>${M.IND_FOCUS[k]}</option>`).join('')}</select></label></div></div>`;
+    } else if (own) {
       const dem = M.renewDemand(p);
       actions = `<div class="panel mt"><h3>İşlemler</h3><div class="body">
         <button class="btn block" data-a="toggleList" data-id="${p.id}">${p.listed ? 'Satış listesinden çıkar' : 'Satış listesine koy'}</button>
+        <button class="btn block mt" data-a="toggleLoan" data-id="${p.id}">${p.loanListed ? 'Kiralık listesinden çıkar' : 'Kiralık listesine koy'}</button>
         <div class="mt small muted">Sözleşme yenileme talebi: <b class="acc">${U.money(dem)}</b>/hafta</div>
         <div class="slider-row">${[1, 2, 3, 4, 5].map(y => `<button class="chip" data-a="renew" data-id="${p.id}" data-y="${y}">${y} yıl</button>`).join('')}</div>
         <label class="field"><span>Bireysel antrenman odağı</span><select class="inp" data-ch="pTrain" data-id="${p.id}">${Object.keys(M.IND_FOCUS).map(k => `<option value="${k}" ${p.tf === k || (!p.tf && !k) ? 'selected' : ''}>${M.IND_FOCUS[k]}</option>`).join('')}</select></label>
@@ -265,7 +306,7 @@
     openModal(`<button class="close" data-a="close">✕</button>
       <h2>${esc(p.n)}</h2>
       <div class="muted">${P.POS_LONG[p.pos]}${p.sec && p.sec.length ? ' (' + p.sec.map(x => P.POS_TR[x]).join(', ') + ')' : ''} · ${age(p)} yaş · ${flag(p.nat)} ${esc(nat(p.nat).n)}</div>
-      <div class="muted small">${pc ? esc(pc.n) : p.ntOnly ? 'Ligi modellenmeyen kulüp' : 'Serbest'}${p.gen ? ' · kurgusal oyuncu' : ''}</div>
+      <div class="muted small">${pc ? esc(pc.n) : p.ntOnly ? 'Ligi modellenmeyen kulüp' : 'Serbest'}${p.loan && s.clubs[p.loan.from] ? ` (${esc(s.clubs[p.loan.from].n)}'dan kiralık)` : ''}${p.gen ? ' · kurgusal oyuncu' : ''}</div>
       <div class="row mt"><span class="ovr big ${ovrCls(o.v)}${o.fuzzy ? ' fz' : ''}">${o.t}</span>
         <div><div class="small muted">Potansiyel</div>${potTxt}</div>
         <div class="grow right"><div class="small muted">Değer</div><b class="acc">${lvl >= 1 || own ? U.money(val) : '~' + U.money(U.roundMoney(val * (0.7 + U.seeded('v' + p.id)() * 0.6)))}</b></div></div>
@@ -436,6 +477,7 @@
     squadSort(d) { ui.squadSort = d.v; render(); },
     squadFilter(d) { ui.squadFilter = d.v; render(); },
     player(d) { ui.bid = null; playerSheet(+d.id); },
+    toggleLoan(d) { const l = M.toggleLoanList(+d.id); toast(l ? 'Oyuncu kiralık listesine eklendi; transfer döneminde teklifler gelebilir.' : 'Oyuncu kiralık listesinden çıkarıldı.'); playerSheet(+d.id); render(); },
     toggleList(d) { const l = M.toggleList(+d.id); toast(l ? 'Oyuncu satış listesine eklendi.' : 'Oyuncu listeden çıkarıldı.'); playerSheet(+d.id); render(); },
     renew(d) { const r = M.renew(+d.id, +d.y); toast(r.ok ? 'Sözleşme yenilendi.' : r.text); playerSheet(+d.id); render(); },
     release(d) {

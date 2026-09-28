@@ -199,6 +199,7 @@
   // ---------- Sezon devri (1 Temmuz) ----------
   function rollover() {
     const s = S(), Y = s.season;
+    CM.Market && CM.Market.returnLoans && CM.Market.returnLoans();
     const last = s.last = {};
     const moves = [];
     for (const cty in CM.COUNTRIES) {
@@ -338,7 +339,10 @@
   function advance() {
     const s = S();
     const start = s.day;
+    // Transfer döneminde oyun 2'şer gün ilerler (teklifler ve pazarlıklar için zaman kalsın)
+    const win = s.user.club != null && CM.Market && CM.Market.isWindow(s.day);
     for (let guard = 0; guard < 60; guard++) {
+      if (win && s.day - start >= 2) break;
       const f = userFixtureOn(s.day);
       if (f) return { type: 'match', f };
       const before = s.news.length ? s.news[0].id : 0;

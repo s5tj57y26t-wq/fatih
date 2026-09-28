@@ -45,13 +45,12 @@
     if (!c) return '<div class="panel"><div class="body muted">Bir kulübü yönetmiyorsunuz.</div></div>';
     const open = M.isWindow(s.day);
     const lgs = Object.keys(CM.LEAGUES);
-    const mine = c.players.map(id => s.players[id]).filter(p => p && p.listed);
+    const mine = c.players.map(id => s.players[id]).filter(p => p && (p.listed || p.loanListed || p.loan));
     const offers = s.offers.filter(o => s.players[o.pid] && s.players[o.pid].club === c.id);
     return `<div class="panel"><div class="body small">${open ? '<span class="good">● Transfer dönemi açık</span>' : '<span class="warn">● Transfer dönemi kapalı</span> — yalnızca serbest oyuncularla anlaşabilirsiniz.'}
-        · Bütçe <b class="acc">${U.money(c.money)}</b> · Kadro ${c.players.length}/${M.MAX_SQUAD}</div></div>
-      ${offers.length ? `<div class="panel"><h3>Gelen teklifler</h3><ul class="list">${offers.map(o => `<li>${esc(s.players[o.pid].n)} <span class="grow small muted">${esc(s.clubs[o.from].n)} · ${U.money(o.amount)}</span>
-        <button class="btn good" data-a="offer" data-id="${o.id}" data-acc="1">✓</button><button class="btn danger" data-a="offer" data-id="${o.id}" data-acc="0">✕</button></li>`).join('')}</ul></div>` : ''}
-      ${mine.length ? `<div class="panel"><h3>Satış listemdekiler</h3><ul class="list">${mine.map(p => `<li class="tap" data-a="player" data-id="${p.id}">${h.posB(p.pos)}<span class="grow ellipsis">${esc(p.n)}</span>${h.ovrB(p)}<span class="num x small">${U.money(P.valueOf(p))}</span></li>`).join('')}</ul></div>` : ''}
+        · Transfer bütçesi <b class="acc">${U.money(M.budget(c))}</b> · Kadro ${c.players.length}/${M.MAX_SQUAD}</div></div>
+      ${offers.length ? `<div class="panel"><h3>Gelen teklifler</h3><ul class="list">${offers.map(o => `<li class="tap" data-a="offerOpen" data-id="${o.id}">${esc(s.players[o.pid].n)} <span class="grow small muted">${esc(s.clubs[o.from].n)} · ${o.loan ? 'Kiralık · ' : ''}${U.money(o.amount)}</span><span class="acc">Yanıtla ›</span></li>`).join('')}</ul></div>` : ''}
+      ${mine.length ? `<div class="panel"><h3>Satılık / kiralık oyuncularım</h3><ul class="list">${mine.map(p => `<li class="tap" data-a="player" data-id="${p.id}">${h.posB(p.pos)}<span class="grow ellipsis">${esc(p.n)}</span>${h.ovrB(p)}<span class="num x small">${U.money(P.valueOf(p))}</span></li>`).join('')}</ul></div>` : ''}
       <div class="panel"><h3>Oyuncu ara</h3><div class="body">
         <input class="inp" data-in="trQ" placeholder="Oyuncu veya kulüp adı..." value="${esc(f.q)}">
         <div class="chips mt">${POS_F.map(x => `<button class="chip ${f.pos === x[0] ? 'on' : ''}" data-a="trPos" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>
@@ -79,7 +78,10 @@
     const b = ui.bid && ui.bid.pid === p.id ? ui.bid : (ui.bid = { pid: p.id, fee: p.club == null ? 0 : U.roundMoney(val), res: null });
     const r = b.res;
     let inner = '';
-    if (r && r.stage === 'contract' && s.pending && s.pending.pid === p.id) {
+    if (r && r.stage === 'contract' && r.loan && s.pending && s.pending.pid === p.id) {
+      inner = `<div class="good">${esc(r.text)}</div>
+        <div class="btns mt"><button class="btn" data-a="bidCancel">Vazgeç</button><button class="btn primary" data-a="sign" data-y="1">Kiralamayı onayla</button></div>`;
+    } else if (r && r.stage === 'contract' && s.pending && s.pending.pid === p.id) {
       inner = `<div class="good">${esc(r.text)}</div><div class="small muted mt">Sözleşme süresi seçin:</div>
         <div class="slider-row">${[1, 2, 3, 4, 5].map(y => `<button class="chip" data-a="sign" data-y="${y}">${y} yıl</button>`).join('')}</div>
         <button class="btn block" data-a="bidCancel">Vazgeç</button>`;
@@ -91,8 +93,9 @@
           <button class="btn" data-a="bidAdj" data-k="0.9">−</button><button class="btn" data-a="bidAdj" data-k="1.1">+</button></div>
         <div class="slider-row">${presets.map(v => `<button class="chip ${b.fee === v ? 'on' : ''}" data-a="bidSet" data-v="${v}">${U.money(v)}</button>`).join('')}</div>
         ${r ? `<div class="${r.ok ? 'good' : 'bad'} mt">${esc(r.text)}</div>${r.counter ? `<button class="btn block mt" data-a="bidSet" data-v="${r.counter}" data-go="1">${U.money(r.counter)} teklif et</button>` : ''}` : ''}
-        <button class="btn primary block mt" data-a="bid" data-id="${p.id}">Teklif yap</button>
-        <div class="small muted mt">Bütçeniz: ${U.money(c.money)}${M.isWindow(s.day) ? '' : ' · Transfer dönemi kapalı'}</div>`;
+        <button class="btn primary block mt" data-a="bid" data-id="${p.id}">Bonservis teklifi yap</button>
+        ${p.loan ? '' : `<button class="btn block mt" data-a="loanBid" data-id="${p.id}">🔁 Sezon sonuna kadar kirala (~${U.money(M.loanFee(p))})</button>`}
+        <div class="small muted mt">Transfer bütçeniz: ${U.money(M.budget(c))}${M.isWindow(s.day) ? '' : ' · Transfer dönemi kapalı'}</div>`;
     }
     return `<div class="panel mt"><h3>Transfer</h3><div class="body">${inner}</div></div>`;
   };
@@ -145,13 +148,17 @@
       body = `<div class="panel"><h3>Mali durum</h3><div class="body"><div class="kv">
           <span>Bakiye</span><span class="${c.money < 0 ? 'bad' : 'acc'}"><b>${U.money(c.money)}</b></span>
           <span>Haftalık maaş</span><span>${U.money(wages)}</span>
-          <span>Haftalık gelir (TV + sponsor)</span><span>${U.money(c.weekInc || 0)}</span></div></div></div>
+          <span>Transfer bütçesi</span><span class="acc">${U.money(M.budget(c))}</span>
+          <span>Haftalık gelir (TV + sponsor)</span><span>${U.money(c.weekInc || 0)}</span>
+          <span>Haftalık işletme gideri</span><span>${U.money(c.weekOps || 0)}</span></div>
+          <div class="small muted mt">Transfer bütçesini yönetim her sezon başında kasaya ve size duyduğu güvene göre belirler; oyuncu satışlarının yarısı bütçeye eklenir.</div></div></div>
         <div class="panel"><h3>Bu sezon</h3><div class="body"><div class="kv">
           <span>Maç günü geliri</span><span class="good">${U.money(F.gate)}</span>
           <span>TV ve sponsorluk</span><span class="good">${U.money(F.tv)}</span>
           <span>Ödüller</span><span class="good">${U.money(F.prize)}</span>
           <span>Satılan oyuncular</span><span class="good">${U.money(F.tout)}</span>
           <span>Maaşlar</span><span class="bad">−${U.money(F.wages)}</span>
+          <span>İşletme giderleri</span><span class="bad">−${U.money(F.ops || 0)}</span>
           <span>Alınan oyuncular</span><span class="bad">−${U.money(F.tin)}</span></div></div></div>`;
     }
     if (tab === 'career') {
@@ -209,9 +216,30 @@
       body = `<div class="chips mb">${POS_F.map(x => `<button class="chip ${pos === x[0] ? 'on' : ''}" data-a="natPos" data-v="${x[0]}">${x[1]}</button>`).join('')}</div>
         <div class="panel"><h3>${esc(n.n)} vatandaşı oyuncular</h3><ul class="list">${list.map(p => row(p, set.has(p.id))).join('')}</ul></div>`;
     }
-    return `<div class="row mb"><button class="btn" data-a="natBack">◀</button>${h.kit(n.c1, n.c2, 26)}<div class="grow"><b>${esc(n.n)}</b><div class="small muted">Elo ${Math.round(n.elo)} · ${CM.Intl.ranking().indexOf(u.nat) + 1}. sırada · Güven ${Math.round(u.confNT || 60)}%</div></div></div>
+    return `<div class="row mb"><button class="btn" data-a="natBack">◀</button>${h.crest(n, 26)}<div class="grow"><b>${esc(n.n)}</b><div class="small muted">Elo ${Math.round(n.elo)} · ${CM.Intl.ranking().indexOf(u.nat) + 1}. sırada · Güven ${Math.round(u.confNT || 60)}%</div></div></div>
       <div class="tabs">${tabs.map(t => `<button data-a="natTab" data-v="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>${body}`;
   };
+
+  // ---------- Gelen teklif: kabul, ret, pazarlık ----------
+  function offerModal(id, msg) {
+    const s = S(), o = s.offers.find(x => x.id === id);
+    if (!o) { h.closeModal(); return h.toast(msg || 'Bu teklif artık geçerli değil.'); }
+    const p = s.players[o.pid], b = s.clubs[o.from], v = P.valueOf(p);
+    const asks = [1.15, 1.3, 1.5].map(k => U.roundMoney(o.amount * k));
+    h.openModal(`<button class="close" data-a="close">✕</button>
+      <h2>${o.loan ? 'Kiralama teklifi' : 'Transfer teklifi'}</h2>
+      <div class="row mt">${h.crest(b, 30)}<div class="grow"><b>${esc(b.n)}</b><div class="small muted">${esc(p.n)} için</div></div></div>
+      <div class="panel mt"><div class="body"><div class="kv">
+        <span>Teklif</span><span class="acc"><b>${U.money(o.amount)}</b>${o.loan ? ' (sezon sonuna kadar kiralık)' : ''}</span>
+        <span>Oyuncu değeri</span><span>${U.money(v)}</span>
+        <span>Geçerlilik</span><span>${Math.max(1, 10 - (s.day - o.day))} gün</span></div></div></div>
+      ${msg ? `<div class="panel"><div class="body">${esc(msg)}</div></div>` : ''}
+      ${o.loan ? '' : `<div class="panel"><h3>Pazarlık</h3><div class="body"><div class="small muted">Karşı teklif olarak isteyeceğiniz bonservis:</div>
+        <div class="slider-row">${asks.map(x => `<button class="chip" data-a="offerCounter" data-id="${o.id}" data-v="${x}">${U.money(x)}</button>`).join('')}</div>
+        <div class="small muted">Alıcı ya kabul eder, ya teklifini yükseltir ya da görüşmeden çekilir.</div></div></div>`}
+      <div class="btns"><button class="btn danger" data-a="offerAns" data-id="${o.id}" data-acc="0">Reddet</button><button class="btn good" data-a="offerAns" data-id="${o.id}" data-acc="1">Kabul et</button></div>`);
+  }
+  UI.offerModal = offerModal;
 
   // ---------- Eylemler ----------
   function refreshBid() { UI.playerSheet(ui.bid.pid); }
@@ -224,12 +252,25 @@
       b.res = M.makeBid(p.id, p.club == null ? 0 : b.fee);
       refreshBid();
     },
+    loanBid(d) {
+      const p = S().players[+d.id];
+      const b = ui.bid && ui.bid.pid === p.id ? ui.bid : (ui.bid = { pid: p.id, fee: 0 });
+      b.res = M.loanBid(p.id);
+      refreshBid();
+    },
+    offerOpen(d) { offerModal(+d.id); },
+    offerAns(d) { const r = M.answerOffer(+d.id, d.acc === '1'); h.closeModal(); h.toast(r.text); UI.render(); CM.Save.save().catch(() => {}); },
+    offerCounter(d) {
+      const r = M.counterOffer(+d.id, +d.v);
+      if (r.counter) offerModal(+d.id, r.text);
+      else { h.closeModal(); h.toast(r.text); UI.render(); CM.Save.save().catch(() => {}); }
+    },
     bidAdj(d) { const b = ui.bid; b.fee = U.roundMoney(Math.max(0, b.fee * +d.k)); b.res = null; refreshBid(); },
     bidSet(d) { const b = ui.bid; b.fee = +d.v; b.res = null; if (d.go) { b.res = M.makeBid(b.pid, b.fee); } refreshBid(); },
     bidCancel() { S().pending = null; ui.bid.res = null; refreshBid(); },
     sign(d) {
       const pid = ui.bid.pid;
-      if (M.acceptContract(+d.y)) { h.toast('Transfer tamamlandı!'); ui.bid = null; h.closeModal(); UI.render(); CM.Save.save(); }
+      if (M.acceptContract(+d.y)) { h.toast(S().players[pid].loan ? 'Kiralama tamamlandı!' : 'Transfer tamamlandı!'); ui.bid = null; h.closeModal(); UI.render(); CM.Save.save(); }
       else { h.toast('Transfer gerçekleşemedi.'); ui.bid = null; UI.playerSheet(pid); }
     },
     clubTab(d) { ui.clubTab = d.v; if (d.v === 'nt') { ui.view = 'national'; } UI.render(); },

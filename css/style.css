@@ -257,3 +257,10 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 .msg.nat .t::after { content: "🌍"; font-size: 12px; }
 .feed .pgoal { color: var(--accent); } .feed .pmiss { color: var(--bad); } .feed .et { color: var(--good); font-weight: 700; } .feed .half, .feed .end { color: var(--good); font-weight: 700; }
 .sbar i { display: block; height: 100%; }
+.crest-i { flex: none; vertical-align: middle; display: inline-block; }
+.crest-top { flex: none; display: grid; place-items: center; width: 36px; }
+.next-match .crest-i { display: block; margin: 0 auto 6px; }
+.headline.build { font-weight: 500; font-style: italic; color: #cfd8ee; }
+.feed .build { color: #b8c4e0; font-style: italic; }
+b.rt { width: 34px; text-align: center; flex: none; font-variant-numeric: tabular-nums; }
+.score .tn .crest-i { margin: 0 2px; }

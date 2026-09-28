@@ -4,7 +4,8 @@
   const CM = G.CM, U = CM.U, P = CM.P, C = CM.Comp, E = CM.E, UI = CM.UI, A = UI.A, ui = UI.ui, h = UI.h, esc = U.esc;
   const S = () => CM.S;
   const $app = document.getElementById('app');
-  const SPEEDS = [[1, 330], [2, 140], [4, 45]];
+  // Anlatım hızı: ev = bir anlatım satırının ekranda kalma süresi, idle = olaysız dakika (ms)
+  const SPEEDS = [['Yavaş', { ev: 2600, idle: 300 }], ['Normal', { ev: 1500, idle: 160 }], ['Hızlı', { ev: 650, idle: 60 }], ['Çok hızlı', { ev: 180, idle: 15 }]];
 
   function userIdx(f) { const u = S().user; return (f.h === u.club || f.h === 'N:' + u.nat) ? 0 : 1; }
   function roundLabel(c, f) {
@@ -26,7 +27,11 @@
       try { r = CM.Game.advance(); } catch (e) { console.error(e); h.busy(false); h.toast('Hata: ' + e.message); return; }
       h.busy(false);
       if (r.type === 'match') { UI.render(); preMatch(r.f); return; }
-      if (r.type === 'news') { ui.view = 'inbox'; ui.openMsg = r.n.id; r.n.read = true; UI.render(); }
+      if (r.type === 'news') {
+        r.n.read = true;
+        if (r.n.type === 'offer' && s.offers.some(o => o.id === r.n.offerId)) { UI.render(); UI.offerModal(r.n.offerId); }
+        else { ui.view = 'inbox'; ui.openMsg = r.n.id; UI.render(); h.toast('Önemli bir mesajınız var.'); }
+      }
       else if (r.type === 'jobless') { ui.view = 'inbox'; UI.render(); h.toast('Yeni iş teklifleri geldi!'); }
       else { UI.render(); if (s.user.club == null) h.toast('Görevsizsiniz: Haberler ekranından teklifleri değerlendirin.'); }
       CM.Save.save().catch(() => {});
@@ -49,9 +54,9 @@
     h.openModal(`<div class="small muted center">${esc(c.n)} · ${esc(roundLabel(c, f))}</div>
       <div class="small muted center">${U.fmtDay(f.d, 'dow')}${f.n ? ' · Tarafsız saha' : ` · ${esc(C.tObj(f.h).st || '')}`}</div>
       <div class="next-match">
-        <div>${h.kit(C.tObj(f.h).c1, C.tObj(f.h).c2, 40)}<div class="tm">${esc(C.tName(f.h))}</div><div class="small muted">${pos(f.h)}Güç ${Math.round(CM.Sim.strengthOf(C.tObj(f.h)))}</div></div>
+        <div>${h.crest(C.tObj(f.h), 40)}<div class="tm">${esc(C.tName(f.h))}</div><div class="small muted">${pos(f.h)}Güç ${Math.round(CM.Sim.strengthOf(C.tObj(f.h)))}</div></div>
         <div class="vs">VS${agg ? `<div class="small muted">İlk maç ${agg[1]}-${agg[0]}</div>` : ''}</div>
-        <div>${h.kit(C.tObj(f.a).c1, C.tObj(f.a).c2, 40)}<div class="tm">${esc(C.tName(f.a))}</div><div class="small muted">${pos(f.a)}Güç ${Math.round(CM.Sim.strengthOf(C.tObj(f.a)))}</div></div>
+        <div>${h.crest(C.tObj(f.a), 40)}<div class="tm">${esc(C.tName(f.a))}</div><div class="small muted">${pos(f.a)}Güç ${Math.round(CM.Sim.strengthOf(C.tObj(f.a)))}</div></div>
       </div>
       ${form && form.length ? `<div class="center small">Rakibin son maçları: <span class="form">${form.map(x => `<i class="${x}">${x}</i>`).join('')}</span></div>` : ''}
       ${missing.length ? `<div class="panel mt"><div class="body small warn">İlk 11'inizde oynayamayacak oyuncular var: ${missing.map(p => esc(p.n)).join(', ')}. Maç başlarken yerleri otomatik doldurulur.</div></div>` : ''}
@@ -62,45 +67,62 @@
   }
 
   // ---------- Canlı maç ----------
+  // Her anlatım satırı okunabilecek kadar ekranda kalır; olaysız dakikalar hızlı geçer
   function startLive(f) {
     const us = userIdx(f);
     const m = CM.Sim.build(f, us);
     CM.Sim.forfeitCheck(m);
-    ui.live = { f, m, us, speed: ui.speedPref || 0, paused: false, tab: 'feed', head: 'Takımlar sahada...', headCls: '', out: null };
-    if (!m.finished) m.events.push({ min: 0, type: 'info', side: -1, text: `${m.sides[0].n} - ${m.sides[1].n} maçı başlamak üzere.` });
+    ui.live = { f, m, us, speed: ui.speedPref != null ? ui.speedPref : 1, paused: false, tab: 'feed', head: 'Takımlar sahada...', headCls: '', out: null,
+      queue: [], shown: [], sc: [0, 0], min: 0 };
+    const L = ui.live;
+    if (m.finished) { L.shown = m.events.filter(e => e.text); L.sc = [m.sides[0].st.g, m.sides[1].st.g]; }
+    else L.shown.push({ min: 0, type: 'info', side: -1, text: `${m.sides[0].n} - ${m.sides[1].n} maçı başlamak üzere.` });
     renderLive();
-    schedule();
+    schedule(SPEEDS[L.speed][1].ev);
   }
-  function schedule() {
+  function schedule(delay) {
     const L = ui.live; if (!L) return;
     clearTimeout(L.timer);
-    if (L.paused || L.m.finished) return;
-    const base = SPEEDS[L.speed][1];
-    L.timer = setTimeout(tick, L.m.phase === 'pens' ? Math.max(base * 3, 250) : base);
+    if (L.paused || (L.m.finished && !L.queue.length)) return;
+    L.timer = setTimeout(tick, delay);
+  }
+  function show(L, e) {
+    const m = L.m, mySide = m.sides[L.us];
+    L.min = e.min;
+    L.shown.push(e);
+    if (e.score) L.sc = e.score.slice();
+    if (e.type === 'goal' || e.type === 'pgoal') { L.head = e.text; L.headCls = 'goal'; }
+    else if (e.type === 'red') { L.head = e.text; L.headCls = 'card'; }
+    else { L.head = e.text; L.headCls = e.type === 'yellow' ? 'card' : e.type === 'build' ? 'build' : ''; }
+    if (e.type === 'half') { L.paused = true; L.head = 'DEVRE ARASI — ' + e.text; L.headCls = ''; }
+    if (e.type === 'et') L.paused = true;
+    if (e.type === 'end') L.sc = [m.sides[0].st.g, m.sides[1].st.g];
+    if (e.side === L.us && (e.type === 'injury' || e.type === 'red') && !m.finished) {
+      const pl = e.pid && S().players[e.pid];
+      if (e.type === 'injury' && mySide.subsLeft > 0) { L.paused = true; h.toast(`${pl ? pl.n : 'Oyuncunuz'} sakatlandı. Değişiklik yapabilirsiniz.`); }
+      if (e.type === 'red') h.toast(`${pl ? pl.n : 'Oyuncunuz'} kırmızı kart gördü!`);
+    }
   }
   function tick() {
     const L = ui.live; if (!L) return;
-    const m = L.m;
-    const evs = m.step();
-    const mySide = m.sides[L.us];
-    for (const e of evs) {
-      if (!e.text) continue;
-      if (e.type === 'goal' || e.type === 'pgoal') { L.head = e.text; L.headCls = 'goal'; }
-      else if (e.type === 'red') { L.head = e.text; L.headCls = 'card'; }
-      else if (e.type !== 'build' || L.headCls !== 'goal' || m.minute % 3 === 0) { L.head = e.text; L.headCls = e.type === 'yellow' ? 'card' : ''; }
-      if (e.type === 'half') { L.paused = true; L.head = 'DEVRE ARASI — ' + e.text; L.headCls = ''; }
-      if (e.type === 'et') { L.paused = true; }
-      if (e.side === L.us && (e.type === 'injury' || e.type === 'red') && !m.finished) {
-        const pl = e.pid && S().players[e.pid];
-        if (e.type === 'injury' && mySide.subsLeft > 0) { L.paused = true; h.toast(`${pl ? pl.n : 'Oyuncunuz'} sakatlandı. Değişiklik yapabilirsiniz.`); }
-        if (e.type === 'red') h.toast(`${pl ? pl.n : 'Oyuncunuz'} kırmızı kart gördü!`);
-      }
+    const sp = SPEEDS[L.speed][1];
+    if (L.queue.length) {
+      const e = L.queue.shift();
+      show(L, e);
+      renderLive();
+      const important = e.type === 'goal' || e.type === 'pgoal' || e.type === 'pmiss' || e.type === 'red' || e.type === 'pen';
+      schedule(important ? sp.ev * 1.8 : sp.ev);
+      return;
     }
+    const m = L.m;
+    const evs = m.step().filter(e => e.text);
+    if (evs.length) { L.queue.push(...evs); tick(); return; }
+    L.min = m.minute;
     renderLive();
-    schedule();
+    schedule(m.phase === 'pens' ? sp.ev : sp.idle);
   }
-  function scorersLine(side, m) {
-    return side.scorers.map(x => `${esc(E.sur(m.all[x.id]))} ${x.min}'${x.pen ? ' (P)' : ''}`).join(', ');
+  function scorersLine(side, m, n) {
+    return side.scorers.slice(0, n).map(x => `${esc(E.sur(m.all[x.id]))} ${x.min}'${x.pen ? ' (P)' : ''}`).join(', ');
   }
   function statsHtml(m) {
     const [a, b] = m.sides;
@@ -113,46 +135,50 @@
         <div class="sbar"><i style="width:${x / t * 100}%;background:${a.c1 === b.c1 ? 'var(--accent)' : a.c1}"></i><i style="width:${y / t * 100}%;background:${b.c1}"></i></div></div>`;
     }).join('');
   }
+  function rtTxt(v) { return v == null ? '<b class="muted">-</b>' : `<b class="rt ${v >= 7.5 ? 'good' : v < 6 ? 'bad' : ''}">${v.toFixed(1)}</b>`; }
   function lineupHtml(m, si) {
     const s = m.sides[si];
+    const R = id => m.finished ? s.ps[id].rating : m.liveRating(s, id);
     const on = s.on.map(o => {
       const ps = s.ps[o.p.id];
-      return `<li>${h.posB(o.slot)}<span class="grow ellipsis">${esc(o.p.n)}${ps.g ? ' ⚽'.repeat(ps.g) : ''}${ps.yc ? ' 🟨' : ''}${ps.inj ? ' 🤕' : ''}</span>${ps.rating ? `<b>${ps.rating.toFixed(1)}</b>` : ''}${h.condBar(o.cond)}</li>`;
+      return `<li>${h.posB(o.slot)}<span class="grow ellipsis">${esc(o.p.n)}${ps.g ? ' ⚽'.repeat(ps.g) : ''}${ps.a ? ' 🅰️' : ''}${ps.yc ? ' 🟨' : ''}${ps.inj ? ' 🤕' : ''}${ps.on ? ` <span class="small muted">↑${ps.on}'</span>` : ''}</span>${rtTxt(R(o.p.id))}${h.condBar(o.cond)}</li>`;
     }).join('');
     const off = Object.keys(s.ps).filter(id => s.ps[id].off != null).map(id => {
       const ps = s.ps[id];
-      return `<li class="muted"><span class="grow ellipsis">${esc(m.all[id].n)} ${ps.rc ? '🟥' : '↓'} ${ps.off}'</span>${ps.rating ? `<b>${ps.rating.toFixed(1)}</b>` : ''}</li>`;
+      return `<li class="muted"><span class="grow ellipsis">${esc(m.all[id].n)} ${ps.rc ? '🟥' : '↓'} ${ps.off}'</span>${rtTxt(R(id))}</li>`;
     }).join('');
-    return `<div class="panel"><h3>${esc(s.n)} <span class="small muted">${s.tactic.form} · ${E.MENT[s.tactic.ment] ? E.MENT[s.tactic.ment].n : ''}</span></h3><ul class="list">${on}${off}</ul></div>`;
+    return `<div class="panel"><h3>${esc(s.n)} <span class="small muted">${s.tactic.form} · ${E.MENT[s.tactic.ment] ? E.MENT[s.tactic.ment].n : ''}</span></h3>
+      <ul class="list"><li class="hdr"><span class="grow">Oyuncu</span><span>Not</span><span style="width:42px" class="center">Knd</span></li>${on}${off}</ul></div>`;
   }
   function renderLive() {
     const L = ui.live, m = L.m;
     const [a, b] = m.sides;
-    const minTxt = m.finished ? 'MAÇ SONU' : m.phase === 'pens' ? 'PENALTILAR' : m.minute === 0 ? 'Başlıyor' : `${m.minute}'${m.minute > 90 ? ' (uz.)' : ''}`;
-    const agg = m.agg ? `<div class="small muted center">Toplam: ${a.st.g + m.agg[0]} - ${b.st.g + m.agg[1]}</div>` : '';
-    const pens = m.pens ? `<div class="center small acc">Penaltılar: ${U.sum(m.pens.h)} - ${U.sum(m.pens.a)}</div>` : '';
-    const evs = m.events.filter(e => e.text && e.type !== 'build').slice(-80).reverse();
+    const over = m.finished && !L.queue.length;
+    const minTxt = over ? 'MAÇ SONU' : m.phase === 'pens' ? 'PENALTILAR' : L.min === 0 ? 'Başlıyor' : `${L.min}'${L.min > 90 ? ' (uz.)' : ''}`;
+    const agg = m.agg ? `<div class="small muted center">Toplam: ${L.sc[0] + m.agg[0]} - ${L.sc[1] + m.agg[1]}</div>` : '';
+    const pk = L.shown.filter(e => e.type === 'pgoal' || e.type === 'pmiss');
+    const pens = pk.length ? `<div class="center small acc">Penaltılar: ${pk.filter(e => e.side === 0 && e.type === 'pgoal').length} - ${pk.filter(e => e.side === 1 && e.type === 'pgoal').length}</div>` : '';
     let body = '';
-    if (L.tab === 'feed') body = `<div class="feed">${evs.map(e => `<div class="${e.type}"><span class="m">${e.min ? e.min + "'" : ''}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`;
+    if (L.tab === 'feed') body = `<div class="feed">${L.shown.slice(-120).reverse().map(e => `<div class="${e.type}"><span class="m">${e.min ? e.min + "'" : ''}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`;
     else if (L.tab === 'stats') body = `<div class="panel"><div class="body">${statsHtml(m)}</div></div>`;
     else body = lineupHtml(m, L.us) + lineupHtml(m, 1 - L.us);
     const my = m.sides[L.us];
-    const ctl = m.finished
+    const ctl = over
       ? `<button class="primary" data-a="liveEnd">DEVAM ▶</button>`
       : `<button data-a="livePause" class="${L.paused ? 'primary' : ''}">${L.paused ? '▶ Sürdür' : '⏸ Durdur'}</button>
-         <button data-a="liveSpeed">${SPEEDS[L.speed][0]}x</button>
+         <button data-a="liveSpeed">${SPEEDS[L.speed][0]}</button>
          <button data-a="liveTac">🔁 Değişiklik (${my.subsLeft})</button>
          <button data-a="liveSkip">⏭ Sonuç</button>`;
     $app.innerHTML = `<div class="match">
       <div class="score">
-        <div class="sb"><div class="tn"><span class="sq" style="background:${a.c1};border:1px solid ${a.c2}"></span><span>${esc(a.n)}</span></div>
-          <div class="res">${a.st.g}-${b.st.g}</div>
-          <div class="tn a"><span>${esc(b.n)}</span><span class="sq" style="background:${b.c1};border:1px solid ${b.c2}"></span></div></div>
+        <div class="sb"><div class="tn">${h.crest(C.tObj(L.f.h), 26)}<span>${esc(a.n)}</span></div>
+          <div class="res">${L.sc[0]}-${L.sc[1]}</div>
+          <div class="tn a"><span>${esc(b.n)}</span>${h.crest(C.tObj(L.f.a), 26)}</div></div>
         <div class="min">${minTxt}</div>${agg}${pens}
-        <div class="scr"><div>${scorersLine(a, m)}</div><div>${scorersLine(b, m)}</div></div>
+        <div class="scr"><div>${scorersLine(a, m, L.sc[0])}</div><div>${scorersLine(b, m, L.sc[1])}</div></div>
       </div>
       <div class="headline ${L.headCls}">${esc(L.head)}</div>
-      <div class="mtabs">${[['feed', 'Anlatım'], ['stats', 'İstatistik'], ['line', 'Kadrolar']].map(t => `<button data-a="liveTab" data-v="${t[0]}" class="${L.tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>
+      <div class="mtabs">${[['feed', 'Anlatım'], ['stats', 'İstatistik'], ['line', 'Kadrolar / Notlar']].map(t => `<button data-a="liveTab" data-v="${t[0]}" class="${L.tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('')}</div>
       <div class="mbody">${body}</div>
       <div class="mctl">${ctl}</div></div>`;
   }
@@ -167,7 +193,7 @@
       <div class="small muted">${m.minute}. dakika · Kalan değişiklik: <b>${s.subsLeft}</b> · Kalan pencere: <b>${s.windows}</b>${s.lastWinMin === m.minute ? ' (bu dakika açık)' : ''}</div>
       <div class="panel mt"><h3>Oyuncu değişikliği</h3>
         ${can ? `<div class="body small muted">${L.out ? 'Şimdi oyuna girecek yedeği seçin.' : 'Önce çıkacak oyuncuyu seçin.'}</div>` : '<div class="body small warn">Değişiklik hakkınız kalmadı.</div>'}
-        <ul class="list">${s.on.map(o => `<li class="tap ${L.out === o.p.id ? 'me' : ''}" data-a="liveOut" data-id="${o.p.id}">${h.posB(o.slot)}<span class="grow ellipsis">${esc(o.p.n)}${s.ps[o.p.id].inj ? ' 🤕' : ''}${s.ps[o.p.id].yc ? ' 🟨' : ''}</span>${h.condBar(o.cond)}</li>`).join('')}</ul>
+        <ul class="list">${s.on.map(o => `<li class="tap ${L.out === o.p.id ? 'me' : ''}" data-a="liveOut" data-id="${o.p.id}">${h.posB(o.slot)}<span class="grow ellipsis">${esc(o.p.n)}${s.ps[o.p.id].inj ? ' 🤕' : ''}${s.ps[o.p.id].yc ? ' 🟨' : ''}</span>${rtTxt(m.liveRating(s, o.p.id))}${h.condBar(o.cond)}</li>`).join('')}</ul>
         ${L.out ? `<h3>Yedekler</h3><ul class="list">${s.bench.map(p => `<li class="tap" data-a="liveIn" data-id="${p.id}">${h.posB(p.pos)}<span class="grow ellipsis">${esc(p.n)}</span><span class="ovr ${h.ovrCls(P.slotRating(p, s.on.find(o => o.p.id === L.out).slot) * 5)}">${Math.round(P.slotRating(p, s.on.find(o => o.p.id === L.out).slot) * 5)}</span>${h.condBar(p.cond)}</li>`).join('') || '<li class="muted">Yedek yok.</li>'}</ul>` : ''}
       </div>
       <div class="panel"><h3>Oyun anlayışı</h3><div class="body">
@@ -211,23 +237,27 @@
       if (!CM.Sim.forfeitCheck(m)) m.runToEnd();
       finishMatch(f, m);
     },
-    livePause() { const L = ui.live; L.paused = !L.paused; renderLive(); schedule(); },
-    liveSpeed() { const L = ui.live; L.speed = (L.speed + 1) % SPEEDS.length; ui.speedPref = L.speed; renderLive(); schedule(); },
+    livePause() { const L = ui.live; L.paused = !L.paused; renderLive(); schedule(SPEEDS[L.speed][1].idle); },
+    liveSpeed() { const L = ui.live; L.speed = (L.speed + 1) % SPEEDS.length; ui.speedPref = L.speed; renderLive(); schedule(SPEEDS[L.speed][1].idle); },
     liveTab(d) { ui.live.tab = d.v; renderLive(); },
     liveTac() { const L = ui.live; L.paused = true; clearTimeout(L.timer); L.out = null; renderLive(); liveTac(); },
     liveClose() { h.closeModal(); const L = ui.live; if (L) { L.out = null; renderLive(); } },
     liveOut(d) { const L = ui.live; if (!L.m.canSub(L.m.sides[L.us])) return; L.out = +d.id; liveTac(); },
     liveIn(d) {
       const L = ui.live, s = L.m.sides[L.us];
-      if (L.m.substitute(s, L.out, +d.id)) { L.head = L.m.events[L.m.events.length - 1].text; L.headCls = ''; }
+      if (L.m.substitute(s, L.out, +d.id)) { const e = L.m.events[L.m.events.length - 1]; L.shown.push(e); L.head = e.text; L.headCls = ''; }
       L.out = null; liveTac(); renderLive();
     },
     liveSet(d) { const L = ui.live; L.m.sides[L.us].tactic[d.k] = d.v; liveTac(); },
     liveSkip() {
       const L = ui.live; clearTimeout(L.timer);
       L.m.userSide = -1; // kalan sürede yapay zekâ yönetir
+      const before = L.m.events.length;
       L.m.runToEnd();
-      L.head = L.m.events[L.m.events.length - 1].text || 'Maç sona erdi';
+      L.queue.forEach(e => L.shown.push(e)); L.queue = [];
+      L.m.events.slice(before).filter(e => e.text && e.type !== 'build').forEach(e => L.shown.push(e));
+      L.sc = [L.m.sides[0].st.g, L.m.sides[1].st.g];
+      L.head = L.m.events[L.m.events.length - 1].text || 'Maç sona erdi'; L.headCls = '';
       renderLive();
     },
     liveEnd() { const L = ui.live; finishMatch(L.f, L.m); }

@@ -1,0 +1,17 @@
+{
+  "name": "Şampiyonluk Menajeri 01/02",
+  "short_name": "Menajer 01/02",
+  "description": "Championship Manager 01/02 tarzı futbol menajerlik oyunu",
+  "lang": "tr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07122b",
+  "theme_color": "#0b1a3a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
